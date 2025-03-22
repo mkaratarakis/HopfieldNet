@@ -309,7 +309,7 @@ noncomputable def NN.State.metropolisHastingsSteps
                 NN.State.metropolisHastingsStep wθ T s'
 
 /-- The Boltzmann (Gibbs) distribution over neural network states --/
-def boltzmannDistribution {R U : Type}
+noncomputable def boltzmannDistribution {R U : Type}
   [LinearOrderedField R] [DecidableEq U] [Fintype U] [Nonempty U] [Coe R ℝ]
   (wθ : Params (HopfieldNetwork R U)) (T : ℝ) : ((HopfieldNetwork R U).State → ℝ) :=
   λ s => Real.exp (-s.E wθ / T) / NN.State.partitionFunction wθ T
