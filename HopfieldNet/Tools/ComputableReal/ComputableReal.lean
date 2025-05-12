@@ -1,4 +1,4 @@
-import HopfieldNet.ComputableReal.ComputableRSeq
+import HopfieldNet.Tools.ComputableReal.ComputableRSeq
 
 /-- Computable reals, defined as the quotient of ComputableℝSeq sequences -- sequences with
   Cauchy sequences of lower and upper bounds that converge to the same value -- by the equivalence
@@ -140,45 +140,55 @@ theorem sub_mk (x y : ComputableℝSeq) : mk x - mk y = mk (x - y) :=
 theorem neg_mk (x : ComputableℝSeq) : -mk x = mk (-x) :=
   rfl
 
-instance instCommRing : CommRing Computableℝ := by sorry
-  -- refine' { natCast := fun n => mk n
-  --           intCast := fun z => mk z
-  --           zero := 0
-  --           one := 1
-  --           mul := (· * ·)
-  --           add := (· + ·)
-  --           neg := (- ·)
-  --           sub := (· - ·)
-  --           npow := npowRec --todo faster instances
-  --           nsmul := nsmulRec
-  --           zsmul := zsmulRec
-  --           .. }
-  -- all_goals
-  --   intros
-  --   first
-  --   | rfl
-  --   | rw [← eq_iff_eq_val]
-  --     simp
-  --     try ring_nf!
+instance instCommRing : CommRing Computableℝ := by
+  refine' { natCast := fun n => mk n
+            intCast := fun z => mk z
+            zero := 0
+            one := 1
+            mul := (· * ·)
+            add := (· + ·)
+            neg := (- ·)
+            sub := (· - ·)
+            npow := npowRec --todo faster instances
+            nsmul := nsmulRec
+            zsmul := zsmulRec
+            natCast_zero := by rfl
+            natCast_succ := fun n => by
+              simp [mk, ComputableℝSeq.val_add, ComputableℝSeq.val_one]
+              rw [← eq_iff_eq_val]
+              simp
+            sub_eq_add_neg := fun a b => by
+              rw [← eq_iff_eq_val]
+              simp
+              rfl
+            .. }
+  all_goals
+    intros
+    first
+    | rfl
+    | rw [← eq_iff_eq_val]
+      simp
+      try ring_nf!
 
 @[simp]
-theorem val_natpow (x : Computableℝ) (n : ℕ): (x ^ n).val = x.val ^ n := by sorry
-  -- induction n
-  -- · rw [pow_zero, val_one, pow_zero]
-  -- · rename_i ih
-  --   rw [pow_succ, pow_succ, val_mul, ih]
+theorem val_natpow (x : Computableℝ) (n : ℕ): (x ^ n).val = x.val ^ n := by
+  induction n
+  · rw [pow_zero, val_one, pow_zero]
+  · rename_i ih
+    rw [pow_succ, pow_succ, val_mul, ih]
 
 @[simp]
-theorem val_nsmul (x : Computableℝ) (n : ℕ) : (n • x).val = n • x.val := by sorry
-  -- induction n
-  -- · simp
-  -- · rename_i ih
-  --   simpa using ih
+theorem val_nsmul (x : Computableℝ) (n : ℕ) : (n • x).val = n • x.val := by
+  induction n
+  · simp
+  · rename_i ih
+    simpa using ih
 
 section safe_inv
 
 set_option linter.dupNamespace false in
-private def nz_quot_equiv := Equiv.subtypeQuotientEquivQuotientSubtype
+private def nz_quot_equiv : Equiv { x : ComputableℝSeq // x.val ≠ 0 } { x : Computableℝ // x ≠ 0 } :=
+  Equiv.subtypeQuotientEquivQuotientSubtype
     (fun x : ComputableℝSeq ↦ x.val ≠ 0)
     (fun x : Computableℝ ↦ x ≠ 0)
     (fun _ ↦ ⟨
@@ -236,19 +246,19 @@ instance instField : Field Computableℝ := { instCommRing with
   exists_pair_ne := ⟨0, 1, by
     rw [ne_eq, ← eq_iff_eq_val, val_zero, val_one]
     exact zero_ne_one⟩
-  mul_inv_cancel := by sorry
-    -- intro a ha
-    -- rw [← eq_iff_eq_val, val_mul, inv_val, val_one]
-    -- have : val a ≠ 0 := by rwa [← val_zero, ne_eq, eq_iff_eq_val]
-    -- field_simp
-  inv_zero := by sorry --rw [← eq_iff_eq_val]; simp
+  mul_inv_cancel := by
+    intro a ha
+    rw [← eq_iff_eq_val, val_mul, inv_val, val_one]
+    have : val a ≠ 0 := by rwa [← val_zero, ne_eq, eq_iff_eq_val]
+    field_simp
+  inv_zero := by rw [← eq_iff_eq_val]; simp
     }
 
 @[simp]
-theorem div_val : (x / y).val = x.val / y.val := by sorry
-  -- change (x * y⁻¹).val = _
-  -- rw [val_mul, inv_val]
-  -- field_simp
+theorem div_val : (x / y).val = x.val / y.val := by
+  change (x * y⁻¹).val = _
+  rw [val_mul, inv_val]
+  field_simp
 
 end field
 
@@ -321,7 +331,7 @@ instance instLinearOrderedField : LinearOrderedField Computableℝ := by
     | linarith (config := {splitNe := true})
     | apply mul_pos ‹_› ‹_›
     | apply le_total
-    | sorry--apply lt_iff_le_not_le
+    | apply lt_iff_le_not_le
 
 end ordered
 

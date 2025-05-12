@@ -63,13 +63,14 @@ theorem probUntilCut_apply_unsat (body : SLang T) (cond : T → Bool) (fuel : �
 -/
 @[simp]
 theorem probUntil_apply_unsat (body : SLang T) (cond : T → Bool) (x : T) (h : ¬ cond x) :
-  probUntil (body : SLang T) (cond : T → Bool) x = 0 := by stop
+  probUntil (body : SLang T) (cond : T → Bool) x = 0 := by
   simp only [probUntil, Bind.bind, Bool.not_eq_true, bind_apply, probWhile]
   simp only [ENNReal.tsum_eq_zero]
   simp only [_root_.mul_eq_zero]
   simp only [iSup_eq_zero]
   intro i ; right ; intro j
-  simp only [h, not_false_eq_true, probUntilCut_apply_unsat]
+  apply probUntilCut_apply_unsat
+  exact h
 
 lemma if_simpl (body : SLang T) (cond : T → Bool) (x_1 x : T) :
   (if x_1 = x then 0 else if cond x_1 = true then if x = x_1 then body x_1 else 0 else 0) = 0 := by

@@ -1,4 +1,4 @@
-import HopfieldNet.ComputableReal.IsComputable
+import HopfieldNet.Tools.ComputableReal.IsComputable
 import Mathlib.Data.Complex.Exponential
 import Mathlib.Analysis.SpecialFunctions.Exp
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
@@ -29,7 +29,7 @@ likewise,
 exp(x) <= expN(x) / (1 - x^(n+1) / (n+1)!)
  if (1 - x^(n+1) / (n+1)!) >= 0, otherwise 0
 -/
-#exit
+
 /-- A valid lower bound when 0 ≤ x. Forms a `CauSeq` that converges to Real.exp x from below.
 Functions by dividing `n` by a constant `k` so that it's in the range `[0,1]`, taking `n` terms
 of the Taylor expansion (which is an under-approximation), and then raising it to `k` again. -/
@@ -68,12 +68,12 @@ lemma List_foldr_eq_finset_sum (x : ℚ) (n : ℕ) :
     field_simp
     ring_nf
 
-theorem exp_lb₀_pos {x : ℚ} (n : ℕ) (hx : 0 ≤ x) : 0 < exp_lb₀ x n := by stop
+theorem exp_lb₀_pos {x : ℚ} (n : ℕ) (hx : 0 ≤ x) : 0 < exp_lb₀ x n := by
   rw [exp_lb₀, List_foldr_eq_finset_sum, Finset.range_add_one']
   rw [Finset.sum_insert (by simp)]
   positivity
 
-theorem exp_lb₀_ge_one {x : ℚ} (n : ℕ) (hx : 0 ≤ x) : 1 ≤ exp_lb₀ x n := by stop
+theorem exp_lb₀_ge_one {x : ℚ} (n : ℕ) (hx : 0 ≤ x) : 1 ≤ exp_lb₀ x n := by
   rw [exp_lb₀, List_foldr_eq_finset_sum, Finset.range_add_one']
   rw [Finset.sum_insert (by simp)]
   apply one_le_pow₀

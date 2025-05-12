@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Matteo Cipollina
 -/
 
-import HopfieldNet.Asym
+import HopfieldNet.HN.Asym
 import Mathlib.Probability.ProbabilityMassFunction.Basic
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
 import Mathlib.LinearAlgebra.Matrix.PosDef
@@ -1518,7 +1518,7 @@ lemma gibbs_update_preserves_other_sites {R U : Type}
       updateNeuron_preserves s v u (-1) (AffineMap.lineMap_eq_lineMap_iff.mp rfl) (id (Ne.symm hvu))
 
 @[simp]
-lemma uniform_neuron_prob {U : Type} [Fintype U] [Nonempty U] [Inv ℕ] (u : U) :
+lemma uniform_neuron_prob {U : Type} [Fintype U] [Nonempty U] (u : U) :
   (1 : ENNReal) / (Fintype.card U : ENNReal) =
   PMF.ofFintype (λ _ : U => (1 : ENNReal) / (Fintype.card U : ENNReal))
     (by
@@ -1538,7 +1538,7 @@ lemma uniform_neuron_prob {U : Type} [Fintype U] [Nonempty U] [Inv ℕ] (u : U) 
   simp only [one_div, PMF.ofFintype_apply]
 
 /-- Uniform neuron selection gives a valid PMF --/
-lemma uniform_neuron_selection_prob_valid {U : Type} [Fintype U] [Nonempty U] [Inv ℕ]:
+lemma uniform_neuron_selection_prob_valid {U : Type} [Fintype U] [Nonempty U]:
   let p := λ (_ : U) => (1 : ENNReal) / (Fintype.card U : ENNReal)
   ∑ a ∈ Finset.univ, p a = 1 := by
   intro p

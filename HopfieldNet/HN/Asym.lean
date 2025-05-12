@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Matteo Cipollina
 -/
 
-import HopfieldNet.HN
+import HopfieldNet.HN.Core
 import Mathlib.LinearAlgebra.Matrix.PosDef
 set_option linter.unusedVariables false
 

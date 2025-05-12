@@ -1,6 +1,6 @@
 import Mathlib.Data.Real.Sign
 import Mathlib.Data.Real.ConjExponents
-import HopfieldNet.ComputableReal.IsComputable
+import HopfieldNet.Tools.ComputableReal.IsComputable
 
 namespace IsComputable
 
@@ -81,14 +81,14 @@ example :
     (if _ : 1 < 2 then 5 / 2 else 6 : ℝ) < 7 ∧
     (if [1,10].length = 2 then 5 else (10 / 7) : ℝ) / 7 < 1 ∧
     (3.5 : ℝ) < 4
-    := by sorry
-  --native_decide
+    := by
+  native_decide
 
-example : (2 - 5 / 2 : ℝ).sign + 1 = 0 := by sorry
-  --native_decide
+example : (2 - 5 / 2 : ℝ).sign + 1 = 0 := by
+  native_decide
 
-example : |∑ x ∈ Finset.range 500, 1 / (x : ℝ) - 6.7908234| < 0.0000001 := by sorry
-  --native_decide
+example : |∑ x ∈ Finset.range 500, 1 / (x : ℝ) - 6.7908234| < 0.0000001 := by
+  native_decide
 
 /-
 There's some very nasty behavior where the compiler may or may not compile something

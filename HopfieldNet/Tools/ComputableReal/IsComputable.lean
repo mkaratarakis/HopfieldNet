@@ -1,4 +1,4 @@
-import HopfieldNet.ComputableReal.ComputableReal
+import HopfieldNet.Tools.ComputableReal.ComputableReal
 import Mathlib.Analysis.RCLike.Basic
 import Mathlib.Tactic.Peel
 
@@ -132,8 +132,8 @@ instance instDecidableLT_val (x y : ComputableℝSeq) : Decidable (x.val < y.val
   @instDecidableLT x.val y.val ⟨x, rfl⟩ ⟨y,rfl⟩
 
 example : ((3 : ℝ) + (5 : ℕ)) / 100 < (3 : ℚ) * (5 + (1 / 5)^2 - 1) ∧
-    (5:ℕ) = ((1:ℝ) + (2:ℚ)^2) := by sorry
-  --native_decide
+    (5:ℕ) = ((1:ℝ) + (2:ℚ)^2) := by
+  native_decide
 
 end IsComputable
 

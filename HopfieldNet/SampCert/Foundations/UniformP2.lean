@@ -28,7 +28,7 @@ Evaluates the ``probUniformP2`` distribution at a point inside of its support.
 -/
 @[simp]
 theorem UniformPowerOfTwoSample_apply (n : PNat) (x : Nat) (h : x < 2 ^ (log 2 n)) :
-  (UniformPowerOfTwoSample n) x = 1 / (2 ^ (log 2 n)) := by stop
+  (UniformPowerOfTwoSample n) x = 1 / (2 ^ (log 2 n)) := by
   simp [UniformPowerOfTwoSample]
   rw [probUniformP2_eval_support]
   · simp
@@ -39,7 +39,7 @@ Evaluates the ``probUniformP2`` distribution at a point outside of its support
 -/
 @[simp]
 theorem UniformPowerOfTwoSample_apply' (n : PNat) (x : Nat) (h : x ≥ 2 ^ (log 2 n)) :
-  UniformPowerOfTwoSample n x = 0 := by stop
+  UniformPowerOfTwoSample n x = 0 := by
   simp [UniformPowerOfTwoSample]
   rw [probUniformP2_eval_zero]
   trivial
@@ -63,7 +63,7 @@ lemma if_simpl_up2 (n : PNat) (x x_1: Fin (2 ^ log 2 ↑n)) :
 The ``SLang`` term ``uniformPowerOfTwo`` is a proper distribution on ``ℕ``.
 -/
 theorem UniformPowerOfTwoSample_normalizes (n : PNat) :
-  ∑' i : ℕ, UniformPowerOfTwoSample n i = 1 := by stop
+  ∑' i : ℕ, UniformPowerOfTwoSample n i = 1 := by
   rw [UniformPowerOfTwoSample]
   rw [← @sum_add_tsum_nat_add' _ _ _ _ _ _ (2 ^ (log 2 n))]
   · rw [Finset.sum_range]

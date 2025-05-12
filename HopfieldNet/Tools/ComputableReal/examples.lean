@@ -1,9 +1,8 @@
-import HopfieldNet.ComputableReal.ComputableReal
+import HopfieldNet.Tools.ComputableReal.ComputableReal
 import Mathlib.Probability.Distributions.Gamma
 
 open Real
 
-#exit
 --Casts and basic arithmetic, logic
 example :
     (10 / 9 : ℝ) < (15 / 2 ⊔ 3) ∧

@@ -1,6 +1,6 @@
 import Mathlib.Data.Real.Pi.Bounds
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
-import HopfieldNet.ComputableReal.SpecialFunctions.Sqrt
+import HopfieldNet.Tools.ComputableReal.SpecialFunctions.Sqrt
 
 open scoped QInterval
 
