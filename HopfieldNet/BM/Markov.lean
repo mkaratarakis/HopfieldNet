@@ -5,9 +5,6 @@ Authors: Matteo Cipollina
 -/
 import HopfieldNet.BM.Core
 import HopfieldNet.Markov
-import Mathlib.Probability.Kernel.Basic
-import Mathlib.MeasureTheory.Measure.WithDensity
-import Mathlib
 
 open Finset Matrix NeuralNetwork State ENNReal Real
 open PMF MeasureTheory ProbabilityTheory.Kernel Set
@@ -42,7 +39,7 @@ noncomputable instance : Fintype ((BoltzmannMachine R U).State) := by
       | inr h_neg => left; exact h_neg⟩
   have f_inj : Function.Injective f := by
     intro s1 s2 h_eq
-    apply State.ext
+    apply @NeuralNetwork.ext
     intro u
     have h := congr_fun h_eq u
     have hval : (f s1 u).val = (f s2 u).val := congr_arg Subtype.val h
@@ -106,15 +103,15 @@ noncomputable def partitionFunctionBM (p : ParamsBM R U) : ENNReal :=
 The partition function is positive and finite, provided T > 0.
 -/
 lemma partitionFunctionBM_pos_finite (p : ParamsBM R U)
-    [IsOrderedCancelAddMonoid ENNReal] [Nonempty (StateBM R U)] :
+    [Nonempty (StateBM R U)] :
     0 < partitionFunctionBM p ∧ partitionFunctionBM p < ⊤ := by
   constructor
   · -- Proof of 0 < Z
-    apply Finset.sum_pos
+    apply ENNReal.sum_pos
+    · exact Finset.univ_nonempty
     · intro s _hs
       unfold boltzmannDensityFnBM
       exact ENNReal.ofReal_pos.mpr (Real.exp_pos _)
-    · exact Finset.univ_nonempty
   · -- Proof of Z < ⊤
     unfold partitionFunctionBM
     rw [sum_lt_top]
@@ -130,7 +127,7 @@ Defined as a measure with density `boltzmannDensityFnBM / partitionFunctionBM`
 with respect to the counting measure on the finite state space.
 -/
 noncomputable def boltzmannDistributionBM (p : ParamsBM R U)
-    [IsOrderedCancelAddMonoid ENNReal] [ Nonempty (StateBM R U)] :
+    [ Nonempty (StateBM R U)] :
     Measure (StateBM R U) :=
   let density := fun s => boltzmannDensityFnBM p s / partitionFunctionBM p
   let Z_pos_finite := partitionFunctionBM_pos_finite p
@@ -149,7 +146,7 @@ noncomputable def boltzmannDistributionBM' (p : ParamsBM R U) : Measure (StateBM
 
 -- Prove it's a probability measure
 instance isProbabilityMeasure_boltzmannDistributionBM
-    [IsOrderedCancelAddMonoid ENNReal] [ Nonempty (StateBM R U)]  (p : ParamsBM R U) :
+    [ Nonempty (StateBM R U)]  (p : ParamsBM R U) :
     IsProbabilityMeasure (boltzmannDistributionBM' p) := by
   constructor
   -- Need to show: μ Set.univ = 1
