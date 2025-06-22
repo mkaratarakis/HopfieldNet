@@ -302,15 +302,107 @@ namespace Matrix
 
 variable {n : Type*} [Fintype n] [DecidableEq n]
 
-/-- The spectral radius of a matrix, defined as the supremum of absolute values of eigenvalues. -/
-noncomputable def spectralRadius (A : Matrix n n ℂ) : ℝ := 
-  sSup {|λ| | λ ∈ spectrum ℂ A.toLin'}
+/-- The spectral radius of a matrix, defined as the supremum of absolute values of eigenvalues.
+    For real matrices, we embed them into complex matrices to access the full spectrum. -/
+noncomputable def spectralRadius (A : Matrix n n ℝ) : ℝ := 
+  sSup {|(λ : ℂ)| | λ ∈ spectrum ℂ (A.map (algebraMap ℝ ℂ)).toLin'}
 
-/-- For an irreducible nonnegative matrix, the spectral radius is a positive eigenvalue. -/
-theorem spectralRadius_is_eigenvalue {A : Matrix n n ℝ} [Nonempty n]
+/-- For nonnegative matrices, the spectral radius is achieved by some eigenvalue. -/
+theorem spectralRadius_achieved {A : Matrix n n ℝ} [Nonempty n] [Fintype n] [DecidableEq n]
+    (hA_nonneg : ∀ i j, 0 ≤ A i j) :
+    ∃ λ ∈ spectrum ℂ (A.map (algebraMap ℝ ℂ)).toLin', |(λ : ℂ)| = spectralRadius A := by
+  sorry -- This follows from compactness of the spectrum
+
+/-- For an irreducible nonnegative matrix, the spectral radius is a positive eigenvalue
+    with a corresponding positive eigenvector (Perron-Frobenius theorem, existence part). -/
+theorem perronFrobenius_eigenvalue_exists {A : Matrix n n ℝ} [Nonempty n] [Fintype n] [DecidableEq n]
     (hA_nonneg : ∀ i j, 0 ≤ A i j) (hA_irr : Irreducible A) :
-    ∃ v : n → ℝ, (∀ i, 0 < v i) ∧ A.mulVec v = spectralRadius (A.map (algebraMap ℝ ℂ)) • v := by
-  sorry -- This would require significant spectral theory development
+    ∃ v : n → ℝ, (∀ i, 0 < v i) ∧ 
+    A.mulVec v = (spectralRadius A : ℝ) • v := by
+  sorry -- This requires substantial development of the Perron-Frobenius theory
+
+/-- For primitive matrices, the Perron-Frobenius eigenvalue has multiplicity one
+    and is the unique eigenvalue with maximum absolute value. -/
+theorem primitive_eigenvalue_simple {A : Matrix n n ℝ} [Nonempty n] [Fintype n] [DecidableEq n]
+    (hA_nonneg : ∀ i j, 0 ≤ A i j) (hA_prim : IsPrimitive A) :
+    ∃! v : n → ℝ, (∀ i, 0 < v i) ∧ (∑ i, v i = 1) ∧ 
+    A.mulVec v = (spectralRadius A : ℝ) • v := by
+  sorry -- This is the uniqueness part of Perron-Frobenius
+
+/-- Key relationship: For irreducible matrices, irreducibility is equivalent to 
+    the graph connectivity property. -/
+theorem irreducible_iff_graph_connected {A : Matrix n n ℝ} [Nonempty n] [Fintype n] [DecidableEq n]
+    (hA_nonneg : ∀ i j, 0 ≤ A i j) :
+    Irreducible A ↔ IsStronglyConnected (toQuiver A) := by
+  rfl -- This is true by definition
+
+/-!
+## Additional Properties and Relationships
+-/
+
+/-- For matrices with the Perron-Frobenius property, we get irreducibility for free. -/
+theorem hasPerronFrobenius_implies_irreducible {A : Matrix n n ℝ} [Nonempty n] [Fintype n] [DecidableEq n]
+    [h : HasPerronFrobeniusProperty A] : Irreducible A :=
+  primitive_implies_irreducible h.primitive
+
+/-- Irreducible matrices have the property that some power connects all states. -/
+theorem irreducible_power_connectivity {A : Matrix n n ℝ} [Nonempty n] [Fintype n] [DecidableEq n]
+    (hA_nonneg : ∀ i j, 0 ≤ A i j) (hA_irr : Irreducible A) :
+    ∃ N, ∀ i j, ∃ k ≤ N, 0 < (A ^ k) i j := by
+  -- This follows from the bounded path property
+  use Fintype.card n * Fintype.card n
+  intro i j
+  sorry -- This requires more detailed graph theory
+
+/-- Key relationship: For irreducible matrices, irreducibility is equivalent to 
+    the graph connectivity property. -/
+/-!
+## Generalizations to Ordered Fields
+-/
+
+/-- Irreducibility can be defined over any linearly ordered field, not just reals. -/
+def IrreducibleOverField {𝕜 : Type*} [LinearOrderedField 𝕜] {n : Type*} [Fintype n] [DecidableEq n]
+    (A : Matrix n n 𝕜) : Prop :=
+  let G : Quiver n := ⟨fun i j => 0 < A i j⟩
+  IsStronglyConnected G
+
+/-- Primitivity over ordered fields. -/
+def IsPrimitiveOverField {𝕜 : Type*} [LinearOrderedField 𝕜] {n : Type*} [Fintype n] [DecidableEq n]
+    (A : Matrix n n 𝕜) : Prop :=
+  IrreducibleOverField A ∧ ∃ k > 0, ∀ i j, 0 < (A ^ k) i j
+
+/-- The irreducibility theorem generalizes to ordered fields. -/
+theorem irreducible_iff_exists_pow_pos_field {𝕜 : Type*} [LinearOrderedField 𝕜] 
+    {n : Type*} [Fintype n] [DecidableEq n] [Nonempty n]
+    (A : Matrix n n 𝕜) (hA_nonneg : ∀ i j, 0 ≤ A i j) :
+    IrreducibleOverField A ↔ ∀ i j, ∃ k, 0 < (A ^ k) i j := by
+  sorry -- This follows the same proof pattern as for reals
+
+end Matrix
+
+/-!
+## Specialized Irreducible Matrix Theory
+-/
+
+namespace Matrix.Irreducible
+
+variable {n : Type*} [Fintype n] [DecidableEq n] [Nonempty n]
+
+/-- A criterion for checking irreducibility: matrix is irreducible iff 
+    (I + A)^(n-1) is strictly positive. -/
+theorem irreducible_criterion (A : Matrix n n ℝ) (hA_nonneg : ∀ i j, 0 ≤ A i j) :
+    Matrix.Irreducible A ↔ ∀ i j, 0 < ((1 + A) ^ (Fintype.card n - 1)) i j := by
+  sorry -- This is a classical criterion from the literature
+
+/-- The index of primitivity is bounded by (n-1)² + 1 for primitive matrices. -/
+theorem index_primitivity_bound (A : Matrix n n ℝ) (hA_nonneg : ∀ i j, 0 ≤ A i j) 
+    (hA_prim : Matrix.IsPrimitive A) :
+    ∃ k ≤ (Fintype.card n - 1)^2 + 1, ∀ i j, 0 < (A ^ k) i j := by
+  sorry -- This is a fundamental result in primitive matrix theory
+
+end Matrix.Irreducible
+
+namespace Matrix
 
 /-- The Perron-Frobenius theorem: For irreducible nonnegative matrices,
     the spectral radius is a simple eigenvalue with a positive eigenvector. -/
