@@ -1,6 +1,8 @@
 import Mathlib.Analysis.RCLike.Basic
 import Mathlib.Combinatorics.Quiver.Path
 import Mathlib.Data.Matrix.Mul
+import Mathlib.LinearAlgebra.Matrix.Spectrum
+import Mathlib.LinearAlgebra.Eigenspace.Basic
 
 open BigOperators Finset
 
@@ -105,8 +107,21 @@ def toQuiver' (A : Matrix n n ℝ) : Quiver n :=
 
 /-- A quiver is strongly connected if there is a path from any vertex to any other vertex.
     This corresponds to the definition of a strongly connected graph in Berman & Plemmons,
-    Chapter 2, Definition 2.6 (p. 30). -/
-abbrev IsStronglyConnected (G : Quiver n) : Prop := ∀ i j : n, Nonempty (G.Path i j)
+    Chapter 2, Definition 2.6 (p. 30). 
+    Note: In practice, strong connectivity implies paths of bounded length (≤ |V|), but
+    we use the simpler definition here for compatibility. -/
+def IsStronglyConnected (G : Quiver n) : Prop := 
+  ∀ i j : n, Nonempty (G.Path i j)
+
+/-- Strengthened version of strong connectivity with bounded path lengths.
+    This is equivalent to the standard definition but makes the bound explicit. -/
+def IsStronglyConnectedBounded (G : Quiver n) : Prop := 
+  ∀ i j : n, ∃ p : G.Path i j, p.length ≤ Fintype.card n
+
+/-- Strong connectivity implies bounded strong connectivity. -/
+theorem stronglyConnected_implies_bounded {G : Quiver n} :
+    IsStronglyConnected G → IsStronglyConnectedBounded G := by
+  sorry -- This requires graph theory about cycle elimination
 
 /-- A matrix `A` is irreducible if its associated directed graph is strongly connected.
     This is the characterization given in Berman & Plemmons, Chapter 2, Theorem 2.7 (p. 30).
@@ -116,10 +131,23 @@ def Irreducible (A : Matrix n n ℝ) : Prop :=
   IsStronglyConnected (toQuiver A)
 
 /-- A matrix is primitive if it's irreducible and some power of it is strictly positive.
+    The smallest such power is called the index of primitivity.
     This corresponds to the characterization in Berman & Plemmons, Chapter 2, Theorem 1.7(c) (p. 49),
     which is then used as the definition of a primitive matrix in Definition 1.8. -/
 def IsPrimitive (A : Matrix n n ℝ) : Prop :=
-  Irreducible A ∧ ∃ k, ∀ i j, 0 < (A ^ k) i j
+  Irreducible A ∧ ∃ k > 0, ∀ i j, 0 < (A ^ k) i j
+
+/-- Primitivity implies irreducibility. -/
+theorem primitive_implies_irreducible {A : Matrix n n ℝ} [Nonempty n] :
+    IsPrimitive A → Irreducible A := fun h => h.1
+
+/-- For a matrix with the HasPerronFrobeniusProperty, we can derive irreducibility. -/
+instance (A : Matrix n n ℝ) [Nonempty n] [HasPerronFrobeniusProperty A] : 
+    Irreducible A := primitive_implies_irreducible HasPerronFrobeniusProperty.primitive
+
+/-- The index of primitivity is the smallest positive integer k such that A^k is strictly positive. -/
+noncomputable def indexOfPrimitivity (A : Matrix n n ℝ) (h : IsPrimitive A) : ℕ :=
+  Nat.find (Classical.choose_spec h.2).exists
 
 /-- This is a helper class to bundle the common hypotheses for the Perron-Frobenius theorem:
     nonnegativity and primitivity (which implies irreducibility). The book states these as
@@ -128,9 +156,7 @@ def IsPrimitive (A : Matrix n n ℝ) : Prop :=
 class HasPerronFrobeniusProperty (A : Matrix n n ℝ) : Prop where
   /-- All entries of the matrix are non-negative. -/
   nonneg : ∀ i j, 0 ≤ A i j
-  /-- The matrix's associated graph is strongly connected. -/
-  irreducible : Irreducible A
-  /-- For some power `k`, `A^k` is strictly positive. -/
+  /-- For some power `k`, `A^k` is strictly positive (primitivity implies irreducibility). -/
   primitive : IsPrimitive A
 
 /-- A helper lemma stating that the product of two non-negative numbers is positive
@@ -144,11 +170,14 @@ private lemma mul_pos_iff_of_nonneg {a b : ℝ} (ha : 0 ≤ a) (hb : 0 ≤ b) :
     · rintro rfl; rw [mul_zero] at h; exact h.false
   · rintro ⟨ha_pos, hb_pos⟩; exact mul_pos ha_pos hb_pos
 
-def endpoint {V : Type*} [Quiver V] {a b : V} : Quiver.Path a b → V
-| Quiver.Path.nil => a
-| Quiver.Path.cons p _ => b
+namespace Quiver.Path
 
-namespace Finset
+variable {V : Type*} [Quiver V] {R : Type*} [MulOneClass R]
+
+/-- The target vertex of a path. -/
+def target {V : Type*} [Quiver V] {a b : V} : Quiver.Path a b → V
+| Quiver.Path.nil => a
+| Quiver.Path.cons _ _ => b
 
 /-- If a finite sum is positive, then there exists at least one summand that is positive. -/
 lemma exists_mem_of_sum_pos {α : Type*} {s : Finset α} {f : α → ℝ}
@@ -222,31 +251,26 @@ theorem pow_entry_pos_iff_exists_path (A : Matrix n n ℝ) (hA : ∀ i j, 0 ≤ 
       | nil => simp [Quiver.Path.length_nil] at hp_len
       | cons q e =>
         simp only [Quiver.Path.length_cons, Nat.succ.injEq] at hp_len
-        have h_w_q_pos : 0 < q.weight_from_vertices A := by
-          simp only [Quiver.Path.weight_from_vertices] at hp_weight
-          exact Quiver.Path.weight_from_vertices_pos (fun {i j} x ↦ x) q
-        cases q with
-        | nil =>
-          have h_m_zero : m = 0 := by simp [Quiver.Path.length_nil] at hp_len; exact hp_len.symm
-          subst h_m_zero
-          have h_Am_pos : 0 < (A ^ 0) i i := by
-            apply (ih i i).mpr
-            refine ⟨Quiver.Path.nil, by simp [Quiver.Path.length_nil], by simp [Quiver.Path.weight_from_vertices]⟩
-          apply Finset.sum_pos'
-          · intro l _
-            exact mul_nonneg (pow_nonneg hA 0 i l) (hA l j)
-          · refine ⟨i, Finset.mem_univ i, ?_⟩
-            exact mul_pos h_Am_pos e
-        | cons q' e' =>
-          let intermediate_vertex := endpoint (q'.cons e')
-          have h_Am_pos : 0 < (A ^ m) i intermediate_vertex := by
-            apply (ih i intermediate_vertex).mpr
-            refine ⟨q'.cons e', hp_len, h_w_q_pos⟩
-          apply Finset.sum_pos'
-          · intro l _
-            exact mul_nonneg (pow_nonneg hA m i l) (hA l j)
-          · refine ⟨intermediate_vertex, Finset.mem_univ intermediate_vertex, ?_⟩
-            exact mul_pos h_Am_pos e
+        -- The path p = q.cons e represents: i --q--> intermediate --e--> j
+        -- We need to extract the positive weight contribution
+        simp only [Quiver.Path.weight_from_vertices] at hp_weight
+        -- Split the weight: weight(q.cons e) = weight(q) * A(intermediate, j)
+        -- where e certifies A(intermediate, j) > 0
+        have h_A_pos : 0 < A (q.target) j := e
+        have h_q_weight_pos : 0 < q.weight_from_vertices A := by
+          -- Since the total weight is positive and A(q.target, j) > 0, 
+          -- the weight of q must also be positive
+          have h_split : q.weight_from_vertices A * A q.target j = hp_weight := by
+            exact hp_weight
+          exact pos_of_mul_pos_right hp_weight (le_of_lt h_A_pos)
+        have h_Am_pos : 0 < (A ^ m) i (q.target) := by
+          apply (ih i (q.target)).mpr
+          exact ⟨q, hp_len, h_q_weight_pos⟩
+        apply Finset.sum_pos'
+        · intro l _
+          exact mul_nonneg (pow_nonneg hA m i l) (hA l j)
+        · use q.target, Finset.mem_univ _
+          exact mul_pos h_Am_pos h_A_pos
 
 omit [Nonempty n] in
 /-- A nonnegative matrix `A` is irreducible if and only if for every `i, j`, there exists a
@@ -267,6 +291,42 @@ theorem irreducible_iff_exists_pow_pos (A : Matrix n n ℝ) (hA_nonneg : ∀ i j
     rw [pow_entry_pos_iff_exists_path A hA_nonneg] at hk_pos
     obtain ⟨p, _, _⟩ := hk_pos
     exact ⟨p⟩
+
+end Matrix
+
+/-!
+## Spectral Properties of Irreducible Matrices
+-/
+
+namespace Matrix
+
+variable {n : Type*} [Fintype n] [DecidableEq n]
+
+/-- The spectral radius of a matrix, defined as the supremum of absolute values of eigenvalues. -/
+noncomputable def spectralRadius (A : Matrix n n ℂ) : ℝ := 
+  sSup {|λ| | λ ∈ spectrum ℂ A.toLin'}
+
+/-- For an irreducible nonnegative matrix, the spectral radius is a positive eigenvalue. -/
+theorem spectralRadius_is_eigenvalue {A : Matrix n n ℝ} [Nonempty n]
+    (hA_nonneg : ∀ i j, 0 ≤ A i j) (hA_irr : Irreducible A) :
+    ∃ v : n → ℝ, (∀ i, 0 < v i) ∧ A.mulVec v = spectralRadius (A.map (algebraMap ℝ ℂ)) • v := by
+  sorry -- This would require significant spectral theory development
+
+/-- The Perron-Frobenius theorem: For irreducible nonnegative matrices,
+    the spectral radius is a simple eigenvalue with a positive eigenvector. -/
+theorem perronFrobenius_theorem {A : Matrix n n ℝ} [Nonempty n]
+    (hA_nonneg : ∀ i j, 0 ≤ A i j) (hA_irr : Irreducible A) :
+    ∃! v : n → ℝ, (∀ i, 0 < v i) ∧ (∑ i, v i = 1) ∧ 
+    A.mulVec v = spectralRadius (A.map (algebraMap ℝ ℂ)) • v := by
+  sorry -- This would require the full spectral theory development
+
+/-- For primitive matrices, all eigenvalues other than the spectral radius 
+    have strictly smaller absolute value. -/
+theorem primitive_eigenvalue_gap {A : Matrix n n ℝ} [Nonempty n]
+    (hA_nonneg : ∀ i j, 0 ≤ A i j) (hA_prim : IsPrimitive A) :
+    ∀ λ ∈ spectrum ℂ A.toLin', λ ≠ spectralRadius (A.map (algebraMap ℝ ℂ)) → 
+    |λ| < spectralRadius (A.map (algebraMap ℝ ℂ)) := by
+  sorry -- This requires advanced spectral analysis
 
 end Matrix
 
