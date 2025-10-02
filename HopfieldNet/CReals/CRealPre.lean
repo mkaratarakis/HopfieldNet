@@ -416,7 +416,7 @@ lemma mul_equiv_same_index
 
 lemma div_lt_iff {a b c : ℚ} (hb : 0 < b) : a / b < c ↔ a < c * b := by
   change a * b⁻¹ < c ↔ a < c * b
-  rw [← mul_lt_mul_right hb]
+  rw [← mul_lt_mul_iff_left₀ hb]
   field_simp [hb.ne']
 
 lemma div_le_div_of_le_of_nonneg {a _ c d : ℚ} (ha : 0 ≤ a) (hc : 0 < c) (_ : 0 < d) (h_le : c ≤ d) :
@@ -2255,7 +2255,7 @@ theorem lt_iff_pos (x y : CReal) : x < y ↔ Pos (y - x) := by
   constructor
   · refine Quot.induction_on₂ x y (fun x_pre y_pre => ?_)
     intro hlt
-    classical
+    
     have h_le : CReal.Pre.le x_pre y_pre := by
       simpa using hlt.1
     have h_not_le : ¬ CReal.Pre.le y_pre x_pre := by
