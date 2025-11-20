@@ -1,6 +1,19 @@
 /-
-Copyright (c) 2025 Matteo Cipollina. All rights reserved.
-Authors: Matteo Cipollina
+This file is part of the Flocq formalization of floating-point
+arithmetic in Lean 4, ported from Coq: https://flocq.gitlabpages.inria.fr/
+
+Original Copyright (C) 2011-2018 Sylvie Boldo
+Original Copyright (C) 2011-2018 Guillaume Melquiond
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 3 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+COPYING file for more details.
 -/
 
 import Mathlib.Algebra.EuclideanDomain.Basic

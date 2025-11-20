@@ -237,6 +237,24 @@ lemma vertices_nonempty' {V : Type*} [Quiver V] {a b : V} (p : Path a b) : p.ver
 def activeFinset [DecidableEq V] {a b : V} (p : Path a b) : Finset V :=
   p.vertices.dropLast.toFinset
 
+def activeVertices' {a : V} {b : V} (p : Path a b) : Set V :=
+  {v | v ∈ p.vertices}
+
+@[simp]
+lemma mem_activeVertices {a b : V} (p : Path a b) (v : V) :
+    v ∈ p.activeVertices' ↔ v ∈ p.vertices := by
+  rfl
+
+/-- The finset of vertices in a path. -/
+def vertexFinset [DecidableEq V] {a b : V} (p : Path a b) : Finset V :=
+  p.vertices.toFinset
+
+/-- The vertex list of `cons` — convenient `simp` form. -/
+@[simp] lemma mem_vertices_cons {a b c : V} (p : Path a b)
+    (e : b ⟶ c) {x : V} :
+    x ∈ (p.cons e).vertices ↔ x ∈ p.vertices ∨ x = c := by
+  simp only [vertices_cons, List.mem_concat]
+
 /--
 A vertex `x` is in the `activeFinset` of a path `p` if and only if it is in the `dropLast` of the `vertices` list of `p`.
 -/
@@ -263,14 +281,166 @@ lemma vertices_head? {a b : V} (p : Path a b) : p.vertices.head? = some a := by
   induction p with
   | nil => simp only [vertices_nil, List.head?_cons]
   | cons p' e ih =>
-    simp only [vertices_cons, List.head?_concat, ih]
+    simp only [vertices_cons]
     have : ¬p'.vertices.isEmpty := by
       simp_all only [List.isEmpty_iff]
       apply Aesop.BuiltinRules.not_intro
       intro a_1
       simp_all only [List.head?_nil, reduceCtorEq]
-    simp [this]
+    simp
     simp_all only [List.isEmpty_iff, Option.getD_some]
+
+@[simp]
+lemma length_toPath {a b : V} (e : a ⟶ b) : (e.toPath).length = 1 := rfl
+
+variable {α : Type*} [DecidableEq α]
+
+@[simp]
+lemma vertices_getLast {a b : V} (p : Path a b) (h : p.vertices ≠ []) :
+  p.vertices.getLast h = b := by
+  induction p with
+  | nil => simp only [vertices_nil, List.getLast_singleton]
+  | cons p' e ih =>
+    simp only [vertices_cons]
+    rw [@List.getLast_concat']
+
+/-- A path from a single arrow. -/
+def List.toPath {a b : V} (e : a ⟶ b) : Path a b :=
+  Path.nil.cons e
+
+@[simp]
+lemma vertices_comp {a b c : V} (p : Path a b) (q : Path b c) :
+  (p.comp q).vertices = p.vertices.dropLast ++ q.vertices := by
+  induction q with
+  | nil =>
+    simp only [comp_nil, vertices_nil]
+    have h_nonempty : p.vertices.length > 0 := by exact vertices_nonempty' p
+    have h_ne_nil : p.vertices ≠ [] := List.ne_nil_of_length_pos h_nonempty
+    rw [← List.dropLast_append_getLast h_ne_nil, vertices_getLast p h_ne_nil]
+    simp_all only [gt_iff_lt, ne_eq, List.cons_ne_self, not_false_eq_true, List.dropLast_append_of_ne_nil,
+      List.dropLast_singleton, List.append_nil]
+  | cons q' e ih =>
+    simp only [comp_cons, vertices_cons, ih, List.concat_eq_append]
+    rw [List.append_assoc]
+
+lemma start_mem_vertices {a b : V} (p : Path a b) : a ∈ p.vertices := by
+  induction p with
+  | nil => simp only [vertices_nil, List.mem_cons, List.not_mem_nil, or_false]
+  | cons p' e ih =>
+    simp only [vertices_cons]
+    simp_all only [List.concat_eq_append, List.mem_append, List.mem_cons, List.not_mem_nil, or_false, true_or]
+
+@[simp] lemma length_eq_zero_iff {a : V} (p : Path a a) :
+    p.length = 0 ↔ p = Path.nil := by
+  cases p
+  · simp only [length_nil]
+  · constructor
+    · intro h; cases h
+    · intro h; cases h
+
+/-- Given vertices lists from a path composition, the prefix path's vertices is a prefix of the full path's vertices -/
+lemma isPrefix_dropLast_of_comp_eq {V : Type*} [Quiver V] {a b c : V} {p : Path a b} {p₁ : Path a c} {p₂ : Path c b}
+    (h : p.vertices = p₁.vertices.dropLast ++ p₂.vertices) : p₁.vertices.dropLast.IsPrefix p.vertices := by
+  rw [h]
+  exact List.prefix_append p₁.vertices.dropLast p₂.vertices
+
+/-- The head of the vertices list is the start vertex. -/
+@[simp]
+lemma vertices_head_eq_start {a b : V} (p : Path a b) : p.vertices.head (vertices_nonempty p) = a := by
+  induction p with
+  | nil => simp only [vertices_nil, List.head_cons]
+  | cons p' _ ih =>
+    simp only [vertices_cons, List.concat_eq_append]
+    have : p'.vertices ≠ [] := vertices_nonempty p'
+    simp only [List.head_append_of_ne_nil this]
+    exact ih
+
+/-- The last element of the vertices list is the end vertex. -/
+@[simp]
+lemma vertices_getLast_eq_end {a b : V} (p : Path a b) :
+  p.vertices.getLast (vertices_nonempty p) = b := by
+  exact vertices_getLast p (vertices_nonempty p)
+
+variable {V : Type*} [Quiver V]
+
+lemma end_prefix_eq_get_vertices {a b c : V} (p₁ : Path a c) (p₂ : Path c b) :
+    c = (p₁.comp p₂).vertices.get
+        ⟨p₁.length, by
+  simp only [vertices_comp, List.length_append, List.length_dropLast,
+    vertices_length, add_tsub_cancel_right, lt_add_iff_pos_right, add_pos_iff,
+    Nat.lt_one_iff, pos_of_gt, or_true]⟩ := by
+  simp only [List.get_eq_getElem, vertices_comp, List.length_dropLast, vertices_length,
+    add_tsub_cancel_right, le_refl, List.getElem_append_right, tsub_self, List.getElem_zero,
+    vertices_head_eq_start]
+
+@[simp] lemma vertices_toPath {i j : V} (e : i ⟶ j) :
+    (e.toPath).vertices = [i, j] := by
+  change (Path.nil.cons e).vertices = [i, j]
+  simp; rfl
+
+@[simp] lemma vertices_toPath_tail {i j : V} (e : i ⟶ j) :
+    (e.toPath).vertices.tail = [j] := by
+  simp [vertices_toPath]
+
+/-- If a composition is `nil`, the left component must be `nil`
+    (proved via lengths, avoiding dependent pattern-matching). -/
+@[simp]
+lemma nil_of_comp_eq_nil_left {a b : V} {p : Path a b} {q : Path b a}
+    (h : p.comp q = (Path.nil : Path a a)) : p.length = 0 := by
+  have hlen : (p.comp q).length = 0 := by
+    simpa using congrArg Path.length h
+  have : p.length + q.length = 0 := by
+    simpa [length_comp] using hlen
+  exact Nat.eq_zero_of_add_eq_zero_right this-- Nat.eq_zero_of_add_eq_zero_left this
+
+/-- If a composition is `nil`, the right component must be `nil`-/
+lemma nil_of_comp_eq_nil_right {a b : V} {p : Path a b} {q : Path b a}
+    (h : p.comp q = (Path.nil : Path a a)) : q.length = 0 := by
+  have hlen : (p.comp q).length = 0 := by
+    simpa using congrArg Path.length h
+  have : p.length + q.length = 0 := by
+    simpa [length_comp] using hlen
+  exact Nat.eq_zero_of_add_eq_zero_left this
+
+@[simp] lemma end_mem_vertices {a b : V} (p : Path a b) : b ∈ p.vertices := by
+  have h₁ : p.vertices.getLast (vertices_nonempty p) = b :=
+    vertices_getLast p (vertices_nonempty p)
+  have h₂ := List.getLast_mem (l := p.vertices) (vertices_nonempty p)
+  simpa [h₁] using h₂
+
+lemma mem_vertices_to_active {V : Type*} [Quiver V]
+    {a b : V} {p : Path a b} {x : V} :
+    x ∈ p.vertices → x ∈ p.activeVertices := by
+  intro hx
+  induction p with
+  | nil =>
+      simpa [Quiver.Path.vertices_nil,
+             Quiver.Path.activeVertices_nil] using hx
+  | cons p' e ih =>
+      have hxSplit : x ∈ p'.vertices.dropLast ∨ x ∈ e.toPath.vertices := by
+        simpa [Quiver.Path.vertices_cons] using hx
+      cases hxSplit with
+      | inl h_in_drop =>
+          have : x ∈ p'.vertices := List.mem_of_mem_dropLast h_in_drop
+          have : x ∈ p'.activeVertices := ih this
+          exact (by
+            simpa [Quiver.Path.activeVertices_cons] using Or.inl this)
+      | inr h_in_edge =>
+          have h_edge : x = p'.end ∨ x = (p'.cons e).end := by
+            simpa [Quiver.Path.vertices_toPath,
+                   List.mem_cons, List.mem_singleton] using h_in_edge
+          cases h_edge with
+          | inl h_eq =>
+              have : x ∈ p'.activeVertices := by
+                subst h_eq; simp_all only [end_mem_vertices, forall_const, cons_eq_comp_toPath, vertices_comp,
+                  vertices_toPath, mem_append, mem_cons, not_mem_nil, or_false, true_or, or_true]
+              exact (by
+                simpa [Quiver.Path.activeVertices_cons] using Or.inl this)
+          | inr h_eq =>
+              have : x ∈ ({ (p'.cons e).end } : Set V) := by
+                simp only [cons_eq_comp_toPath, h_eq, Set.mem_singleton_iff]
+              exact (by
+                simpa [Quiver.Path.activeVertices_cons] using Or.inr this)
 
 /- New Simp Lemmas for activeFinset
 @[simp] lemma activeFinset_nil [DecidableEq V] {a : V} : activeFinset (nil : Path a a) = {a} := by rw?
@@ -297,7 +467,7 @@ variable {V W : Type*} [Quiver V] [Quiver W] (F : V ⥤q W)
 lemma end_map {a b : V} (p : Path a b) : F.obj (p.end) = (F.mapPath p).end := by
   induction p with
   | nil => rfl
-  | cons p' e ih => simp [ih]; rfl
+  | cons p' e ih => simp; rfl
 
 end Prefunctor
 
@@ -341,6 +511,24 @@ lemma mapPath_embedding_vertices_in_set {i j : S} (p : Path i j) :
     | inl h => exact ih v h
     | inr h => subst h; simp_all only [embedding_obj, Subtype.coe_prop]
 
+open Quiver.Path
+
+/--
+If a path in the original quiver only visits vertices in a set `S`, it can be lifted
+to a path in the induced subquiver on `S`.
+-/
+def lift_path_to_induced {S : Set n} [DecidablePred (· ∈ S)]  [Quiver V]
+    {i j : n} [Quiver n] (p : Path i j) (hp : ∀ k, k ∈ p.vertices → k ∈ S) :
+    letI : Quiver n := inferInstance
+    letI : Quiver S := inducedQuiver S
+    Path (⟨i, hp i (start_mem_vertices p)⟩ : S) (⟨j, hp j (end_mem_vertices p)⟩ : S) := by
+  letI : Quiver n := inferInstance
+  letI : Quiver S := inducedQuiver S
+  induction p with
+  | nil => exact Path.nil
+  | cons p' e ih =>
+    exact Path.cons (ih (fun k hk => hp k ((mem_vertices_cons p' e).mpr (Or.inl hk)))) e
+
 end Quiver.Subquiver
 
 namespace Quiver.Path
@@ -363,57 +551,11 @@ lemma length_replicate (n : ℕ) {a : V} (p : Path a a) :
   induction n with
   | zero => simp only [replicate, length_nil, zero_mul]
   | succ k ih =>
-    simp only [replicate, length_comp, ih, add_comm, Nat.succ_mul, Nat.add_left_cancel_iff]
+    simp only [replicate, length_comp, ih, add_comm, Nat.succ_mul]
 
 variable {V : Type*} [Quiver V]
 
-@[simp]
-lemma length_toPath {a b : V} (e : a ⟶ b) : (e.toPath).length = 1 := rfl
 
-variable {α : Type*} [DecidableEq α]
-
-@[simp]
-lemma vertices_getLast {a b : V} (p : Path a b) (h : p.vertices ≠ []) :
-  p.vertices.getLast h = b := by
-  induction p with
-  | nil => simp only [vertices_nil, List.getLast_singleton]
-  | cons p' e ih =>
-    simp only [vertices_cons]
-    rw [@List.getLast_concat']
-
-/-- A path from a single arrow. -/
-def List.toPath {a b : V} (e : a ⟶ b) : Path a b :=
-  Path.nil.cons e
-
-@[simp]
-lemma vertices_comp {a b c : V} (p : Path a b) (q : Path b c) :
-  (p.comp q).vertices = p.vertices.dropLast ++ q.vertices := by
-  induction q with
-  | nil =>
-    simp only [comp_nil, vertices_nil, List.append_nil]
-    have h_nonempty : p.vertices.length > 0 := by exact vertices_nonempty' p
-    have h_ne_nil : p.vertices ≠ [] := List.ne_nil_of_length_pos h_nonempty
-    rw [← List.dropLast_append_getLast h_ne_nil, vertices_getLast p h_ne_nil]
-    simp_all only [gt_iff_lt, ne_eq, List.cons_ne_self, not_false_eq_true, List.dropLast_append_of_ne_nil,
-      List.dropLast_singleton, List.append_nil]
-  | cons q' e ih =>
-    simp only [comp_cons, vertices_cons, ← comp_assoc, ih, List.concat_eq_append]
-    rw [List.append_assoc]
-
-lemma start_mem_vertices {a b : V} (p : Path a b) : a ∈ p.vertices := by
-  induction p with
-  | nil => simp only [vertices_nil, List.mem_cons, List.not_mem_nil, or_false]
-  | cons p' e ih =>
-    simp only [vertices_cons]
-    simp_all only [List.concat_eq_append, List.mem_append, List.mem_cons, List.not_mem_nil, or_false, true_or]
-
-@[simp] lemma length_eq_zero_iff {a : V} (p : Path a a) :
-    p.length = 0 ↔ p = Path.nil := by
-  cases p
-  · simp only [length_nil]
-  · constructor
-    · intro h; cases h
-    · intro h; cases h
 
 variable {V : Type*} [Quiver V]
 
@@ -435,16 +577,13 @@ theorem exists_decomp_at_length {a b : V} (p : Path a b) {n : ℕ} (hn : n ≤ p
       rename_i c
       rw [length_cons] at hn
       rcases (Nat.le_succ_iff).1 hn with h | h
-      · -- First case: `n ≤ p'.length`
-        rcases ih h with ⟨d, p₁, p₂, hp, hl⟩
+      · rcases ih h with ⟨d, p₁, p₂, hp, hl⟩
         refine ⟨d, p₁, p₂.cons e, ?_, hl⟩
         simp only [hp, cons_eq_comp_toPath, comp_assoc]
-      · -- Second case: `n = p'.length + 1` (`n` reaches the end of the path)
-        subst h
+      · subst h
         refine ⟨c, p'.cons e, Path.nil, ?_, ?_⟩
         · simp only [cons_eq_comp_toPath, comp_nil]
-        · simp only [cons_eq_comp_toPath, length_comp, length_toPath, Nat.succ_eq_add_one,
-          Nat.add_left_cancel_iff]
+        · simp only [cons_eq_comp_toPath, length_comp, length_toPath, Nat.succ_eq_add_one]
 
 theorem exists_decomp_of_mem_vertices {a b v : V} (p : Path a b)
   (h : v ∈ p.vertices) : ∃ (p₁ : Path a v) (p₂ : Path v b), p = p₁.comp p₂ := by
@@ -503,35 +642,6 @@ lemma end_eq_of_heq {a a' b b' : V} {p : Path a b} {p' : Path a' b'} (h : HEq p 
   b = b' :=
   (eq_of_heq h).2-/
 
-/-- The head of the vertices list is the start vertex. -/
-@[simp]
-lemma vertices_head_eq_start {a b : V} (p : Path a b) : p.vertices.head (vertices_nonempty p) = a := by
-  induction p with
-  | nil => simp only [vertices_nil, List.head_cons]
-  | cons p' _ ih =>
-    simp only [vertices_cons, List.concat_eq_append]
-    have : p'.vertices ≠ [] := vertices_nonempty p'
-    simp only [List.head_append_of_ne_nil this]
-    exact ih
-
-/-- The last element of the vertices list is the end vertex. -/
-@[simp]
-lemma vertices_getLast_eq_end {a b : V} (p : Path a b) :
-  p.vertices.getLast (vertices_nonempty p) = b := by
-  exact vertices_getLast p (vertices_nonempty p)
-
-variable {V : Type*} [Quiver V]
-
-lemma end_prefix_eq_get_vertices {a b c : V} (p₁ : Path a c) (p₂ : Path c b) :
-    c = (p₁.comp p₂).vertices.get
-        ⟨p₁.length, by
-  simp only [vertices_comp, List.length_append, List.length_dropLast,
-    vertices_length, add_tsub_cancel_right, lt_add_iff_pos_right, add_pos_iff,
-    Nat.lt_one_iff, pos_of_gt, or_true]⟩ := by
-  simp only [List.get_eq_getElem, vertices_comp, List.length_dropLast, vertices_length,
-    add_tsub_cancel_right, le_refl, List.getElem_append_right, tsub_self, List.getElem_zero,
-    vertices_head_eq_start]
-
 
 /-- `split_at_vertex` decomposes a path `p` at the vertex sitting in
     position `i` of its `vertices` list. -/
@@ -558,13 +668,13 @@ variable {V : Type*} [Quiver V]
 
 /-- A path is simple if it does not visit any vertex more than once, with the possible
 exception of the final vertex, which may be the same as the start vertex in a cycle. -/
-def IsSimple {a b : V} (p : Path a b) : Prop :=
+def IsSimple' {a b : V} (p : Path a b) : Prop :=
   p.vertices.dropLast.Nodup ∧
   (a = b → p.vertices.dropLast.length = p.length) ∧
   (a ≠ b → p.end ∉ p.vertices.dropLast)
 
-lemma isSimple_nil {a : V} : IsSimple (nil : Path a a) := by
-  simp only [IsSimple, vertices_nil, dropLast_singleton, nodup_nil, List.length_nil, le_refl,
+lemma isSimple_nil {a : V} : IsSimple' (nil : Path a a) := by
+  simp only [IsSimple', vertices_nil, dropLast_singleton, nodup_nil, List.length_nil, le_refl,
     Nat.eq_of_le_zero, length_nil, imp_self, ne_eq, not_true_eq_false, not_mem_nil,
     not_false_eq_true, implies_true, and_self]
 
@@ -582,10 +692,6 @@ lemma isStrictlySimple_cons [DecidableEq V] {a b c : V} (p : Path a b) (e : b �
   IsStrictlySimple (p.cons e) ↔ IsStrictlySimple p ∧ c ∉ p.vertices := by
   simp only [IsStrictlySimple, vertices_cons]
   rw [List.nodup_concat]
-
-/-- The finset of vertices in a path. -/
-def vertexFinset [DecidableEq V] {a b : V} (p : Path a b) : Finset V :=
-  p.vertices.toFinset
 
 /-- The set of vertices of a simple path has cardinality `p.length + 1`. -/
 lemma card_vertexFinset_of_isStrictlySimple [DecidableEq V] {a b : V} {p : Path a b} (hp : IsStrictlySimple p) :
@@ -610,92 +716,14 @@ lemma not_strictly_simple_iff_exists_repeated_vertex [DecidableEq V] {a b : V} {
   · rintro ⟨v, _, hv⟩
     exact ⟨v, hv⟩
 
-lemma vertex_not_in_prefix_dropLast
-    [DecidableEq V] {a b v : V} {p : Path a b}
-    (h_v_in_p : v ∈ p.vertices) :
-    let i  := p.vertices.idxOf v
-    let hi := List.idxOf_lt_length h_v_in_p
-    ∀ (c : V) (p_prefix : Path a c) (p_suffix : Path c b)
-      (_ : p = p_prefix.comp p_suffix)
-      (_ : p_prefix.length = i)
-      (_ : c = p.vertices.get ⟨i, hi⟩),
-      v ∉ p_prefix.vertices.dropLast := by
-  intro i hi c p_prefix p_suffix h_comp h_len_prefix h_c_eq
-  subst h_c_eq
-  by_contra h_in_prefix
-  have h_idx_lt : List.idxOf v p_prefix.vertices.dropLast < i := by
-    have : List.idxOf v p_prefix.vertices.dropLast <
-        p_prefix.vertices.dropLast.length :=
-      List.idxOf_lt_length h_in_prefix
-    simpa [h_len_prefix, Quiver.Path.vertices_length,
-           List.length_dropLast] using this
-  have h_prefix_in_p : List.IsPrefix p_prefix.vertices.dropLast p.vertices := by
-    have hverts :
-        p.vertices = p_prefix.vertices.dropLast ++ p_suffix.vertices := by
-      simpa [Quiver.Path.vertices_comp] using
-        congrArg Quiver.Path.vertices h_comp
-    have : List.IsPrefix p_prefix.vertices.dropLast
-        (p_prefix.vertices.dropLast ++ p_suffix.vertices) :=
-          List.prefix_append p_prefix.vertices.dropLast p_suffix.vertices
-    simp only [List.get_eq_getElem]
-    simp_all only [List.get_eq_getElem, vertices_comp, List.prefix_append, i, hi]
-  have h_indexOf_le : i ≤ List.idxOf v p_prefix.vertices.dropLast := by
-    have h_eq :=
-      (List.idxOf_eq_idxOf_of_isPrefix h_prefix_in_p h_in_prefix).symm
-    have : i = List.idxOf v p.vertices := rfl
-    simp only [List.get_eq_getElem, ge_iff_le]
-    simp_all only [List.get_eq_getElem, vertices_comp, lt_self_iff_false, i, hi]
-  have h_abs :
-      List.idxOf v p_prefix.vertices.dropLast <
-      List.idxOf v p_prefix.vertices.dropLast :=
-    lt_of_lt_of_le h_idx_lt h_indexOf_le
-  exact (Nat.lt_irrefl _ h_abs)
 
 /-- Removing a positive-length cycle from a path gives a strictly shorter path with the same endpoints. -/
 lemma remove_cycle_gives_shorter_path [DecidableEq V] {a v : V}
     {p_prefix : Path a v} {p_cycle : Path v v} {p_rest : Path v b}
     (h_cycle_pos : p_cycle.length > 0) :
     (p_prefix.comp p_rest).length < (p_prefix.comp (p_cycle.comp p_rest)).length := by
-  simp only [length_comp, gt_iff_lt, lt_add_iff_pos_right, Nat.add_assoc]
+  simp only [length_comp]
   simp_all only [gt_iff_lt, add_lt_add_iff_left, lt_add_iff_pos_left]
-
-/--
-If a vertex `v` is repeated in a path `p`, then after splitting `p` at the
-first occurrence of `v` into a prefix `p_prefix` and a suffix `p_suffix`,
-the vertex `v` must be contained in `p_suffix.vertices.tail`.
--/
-lemma repeated_vertex_in_suffix_tail [DecidableEq V] {a b v : V} {p : Path a b}
-    (h_v_in_p : v ∈ p.vertices) (h_v_count : p.vertices.count v ≥ 2) :
-    let i := p.vertices.idxOf v
-    let hi := List.idxOf_lt_length h_v_in_p
-    ∀ (c : V) (p_prefix : Path a c) (p_suffix : Path c b)
-      (_ : p = p_prefix.comp p_suffix) (_ : p_prefix.length = i)
-      (_ : c = p.vertices.get ⟨i, hi⟩),
-      v ∈ p_suffix.vertices.tail := by
-  intro i hi c p_prefix p_suffix h_comp h_len_prefix h_c_eq
-  have h_notin_prefix : v ∉ p_prefix.vertices.dropLast := by
-    exact
-      (vertex_not_in_prefix_dropLast
-          (a := a) (b := b) (p := p) (v := v) h_v_in_p)
-        c p_prefix p_suffix h_comp h_len_prefix h_c_eq
-  have h_count_split :
-      (p_prefix.vertices.dropLast ++ p_suffix.vertices).count v ≥ 2 := by
-    simpa [h_comp, vertices_comp] using h_v_count
-  have h_count_prefix :
-      (p_prefix.vertices.dropLast).count v = 0 :=
-    List.count_eq_zero_of_not_mem h_notin_prefix
-  have h_count_suffix : p_suffix.vertices.count v ≥ 2 := by
-    have : (p_prefix.vertices.dropLast).count v +
-        p_suffix.vertices.count v ≥ 2 := by
-      simpa [List.count_append] using h_count_split
-    simpa [h_count_prefix, zero_add] using this
-  exact List.mem_tail_of_count_ge_two h_count_suffix
-
-/-- Given vertices lists from a path composition, the prefix path's vertices is a prefix of the full path's vertices -/
-lemma isPrefix_dropLast_of_comp_eq {V : Type*} [Quiver V] {a b c : V} {p : Path a b} {p₁ : Path a c} {p₂ : Path c b}
-    (h : p.vertices = p₁.vertices.dropLast ++ p₂.vertices) : p₁.vertices.dropLast.IsPrefix p.vertices := by
-  rw [h]
-  exact List.prefix_append p₁.vertices.dropLast p₂.vertices
 
 open List
 
@@ -719,7 +747,8 @@ lemma vertex_in_path_cases {a b c : V} (p : Path a b) (h : c ∈ p.vertices) :
         simp only [vertices_cons]
         rw [List.dropLast_append_singleton (vertices_nonempty' p')]
         rw [h_eq_p'_end]
-        aesop
+        subst h_eq_p'_end
+        simp_all only
       · -- c is in the dropLast of p'.vertices, so it's also in p.vertices.dropLast
         right
         simp only [vertices_cons]
@@ -740,19 +769,13 @@ lemma exists_prefix_with_vertex [DecidableEq V] {a b c : V} (p : Path a b) (h : 
       contradiction
   | inr h_mem_tail =>
       let i := p.vertices.idxOf c
-      have hi : i < p.vertices.length := List.idxOf_lt_length h
+      have hi : i < p.vertices.length := List.idxOf_lt_length_of_mem h
       obtain ⟨v, p₁, p₂, h_comp, h_len, h_c_eq⟩ := split_at_vertex p i hi
       have hvc : v = c := by
         rw [h_c_eq]
         exact List.get_idxOf_of_mem h
       subst hvc
       exact ⟨p₁, p₂, h_comp⟩
-
-/-- The vertex list of `cons` — convenient `simp` form. -/
-@[simp] lemma mem_vertices_cons {a b c : V} (p : Path a b)
-    (e : b ⟶ c) {x : V} :
-    x ∈ (p.cons e).vertices ↔ x ∈ p.vertices ∨ x = c := by
-  simp only [vertices_cons, List.mem_concat]
 
 /-- Split a path at the **last** occurrence of a vertex. -/
 theorem exists_decomp_of_mem_vertices_prop
@@ -778,7 +801,7 @@ theorem exists_decomp_of_mem_vertices_prop
             x ∉ p₂.vertices.tail := by
         intro hxe; subst hxe
         exact ⟨pPrev.cons e, Path.nil, by simp only [cons_eq_comp_toPath, comp_nil],
-          by simp only [cons_eq_comp_toPath, vertices_nil, tail_cons, not_mem_nil, not_false_eq_true]⟩
+          by simp only [vertices_nil, tail_cons, not_mem_nil, not_false_eq_true]⟩
       -- Case 2 : `x` occurs in the prefix (and **is not** the final vertex).
       have h_case₂ :
           x ∈ pPrev.vertices → x ≠ (pPrev.cons e).end →
@@ -795,18 +818,16 @@ theorem exists_decomp_of_mem_vertices_prop
           have hmem' : x ∈ (q₂.vertices.dropLast ++ (e.toPath).vertices).tail := by
             simpa [q₂', vertices_comp] using hmem
           by_cases h_nil : q₂.vertices.dropLast = []
-          · -- empty prefix ⇒ membership comes from `e.toPath`
-            have h_tail_toPath : x ∈ (e.toPath).vertices.tail := by
+          · have h_tail_toPath : x ∈ (e.toPath).vertices.tail := by
               simpa [h_nil] using hmem'
             have hx_end : x = (pPrev.comp e.toPath).end := by
               have : e.toPath.vertices.tail = [(pPrev.cons e).end] := by
-                simp only [toPath, vertices_cons, vertices_nil, cons_eq_comp_toPath]
+                simp only [cons_eq_comp_toPath]
                 rfl
               rw [this] at h_tail_toPath
               exact List.mem_singleton.mp h_tail_toPath
             exact hxe_ne hx_end
-          · -- non-empty prefix
-            have h_split := (List.mem_tail_append).1 hmem'
+          · have h_split := (List.mem_tail_append).1 hmem'
             have h_mem_right :
                 x ∈ (q₂.vertices.dropLast).tail ++ (e.toPath).vertices := by
               cases h_split with
@@ -823,7 +844,7 @@ theorem exists_decomp_of_mem_vertices_prop
                   have h' : x = pPrev.end ∨
                             x = (pPrev.cons e).end := by
                     have : e.toPath.vertices = [pPrev.end, (pPrev.cons e).end] := by
-                      simp only [toPath, vertices_cons, vertices_nil, cons_eq_comp_toPath]
+                      simp only [cons_eq_comp_toPath]
                       rfl
                     rw [this] at h_in_toPath
                     simpa [List.mem_cons, List.mem_singleton] using h_in_toPath
@@ -835,17 +856,11 @@ theorem exists_decomp_of_mem_vertices_prop
                             List.length_pos_of_ne_nil h_nil
                           have h_vert_len_ge_2 : q₂.vertices.length ≥ 2 := by
                             subst h_eq_src h_prev
-                            simp_all only [ne_eq, not_false_eq_true, tail_append_of_ne_nil, false_and, and_self,
-                              or_true, mem_append, length_dropLast, vertices_length, add_tsub_cancel_right, le_refl,
-                              gt_iff_lt, vertices_comp, cons_eq_comp_toPath, comp_assoc, ge_iff_le, Nat.reduceLeDiff,
-                              forall_const, or_false, IsEmpty.forall_iff, q₂']
+                            simp_all
                             exact h_drop_len_pos
                           have h_path_len_ge_1 : q₂.length ≥ 1 := by
                             subst h_eq_src h_prev
-                            simp_all only [ne_eq, not_false_eq_true, tail_append_of_ne_nil, false_and, and_self,
-                              or_true, mem_append, length_dropLast, vertices_length, add_tsub_cancel_right, le_refl,
-                              gt_iff_lt, ge_iff_le, Nat.reduceLeDiff, vertices_comp, cons_eq_comp_toPath, comp_assoc,
-                              q₂']
+                            simp_all
                           exact h_path_len_ge_1
                         have h_q2_end : q₂.end = pPrev.end := by
                           have : (q₁.comp q₂).end = pPrev.end := by rw [h_prev]
@@ -855,7 +870,7 @@ theorem exists_decomp_of_mem_vertices_prop
                           rw [List.ne_nil_iff_length_pos, vertices_length]
                           omega
                         have h_x_is_last : x = q₂.vertices.getLast h_nonempty := by
-                          simp [h_q2_end]
+                          simp
                         have h_mem_tail : q₂.vertices.getLast h_nonempty ∈ q₂.vertices.tail := by
                           have h_len2 : q₂.vertices.length ≥ 2 := by rw [vertices_length]; omega
                           exact List.getLast_mem_tail h_len2
@@ -899,7 +914,7 @@ theorem isStrictlySimple_of_shortest [DecidableEq V]
         | cons p' e =>
           simp only [vertices_cons]
           have h := vertices_head? p'
-          simp [vertices_cons, List.concat_eq_append]
+          simp [List.concat_eq_append]
       have hne : p₂.vertices ≠ [] := by
         apply List.ne_nil_of_head?_eq_some h_head
       have h_shape : p₂.vertices = v :: p₂.vertices.tail := by
@@ -918,14 +933,13 @@ theorem isStrictlySimple_of_shortest [DecidableEq V]
         exact rfl
       rw [h_shape]
       have h_not_in_tail : v ∉ p₂.vertices.tail := hv_not_tail
-      simp only [List.count_cons_self, List.count_eq_zero_of_not_mem h_not_in_tail, add_zero]
+      simp only [List.count_cons_self, List.count_eq_zero_of_not_mem h_not_in_tail]
     have : (p₁.vertices.dropLast).count v ≥ 1 := by
       have : 1 + (p₁.vertices.dropLast).count v ≥ 2 := by
         rw [add_comm]
         simpa [h_count_p2] using hv_ge₂
       linarith
     exact (List.count_pos_iff).1 (lt_of_lt_of_le Nat.zero_lt_one this)
-  -- we decompose `p₁` into prefix `q` and **non-empty** cycle `c`
   obtain ⟨q, c, h_p1_split⟩ :=
     exists_decomp_of_mem_vertices p₁
       (List.mem_of_mem_dropLast hv_in_p1_dropLast)
@@ -976,10 +990,8 @@ theorem isStrictlySimple_of_shortest [DecidableEq V]
           rw [length_comp]
         rw [h_len, h_shorter_len]
         exact Nat.add_lt_add_right h_q_len p₂.length
-      -- contradiction with minimality of p
       exact absurd (h_min shorter_path) (not_le.mpr h_shorter_total)
     · exact Nat.pos_of_ne_zero h_len_zero
-  -- we build the strictly shorter path `p' = q.comp p₂`
   let p' : Path a b := q.comp p₂
   have h_shorter : p'.length < p.length := by
     have h_len_p : p.length = q.length + c.length + p₂.length := by
@@ -1004,67 +1016,270 @@ lemma length_le_card_minus_one_of_isSimple [Fintype n] [DecidableEq n] [Quiver n
   rw [h_card_verts] at h_card_le_univ
   exact Nat.le_sub_one_of_lt h_card_le_univ
 
-@[simp] lemma vertices_toPath {i j : V} (e : i ⟶ j) :
-    (e.toPath).vertices = [i, j] := by
-  change (Path.nil.cons e).vertices = [i, j]
-  simp [vertices_cons, vertices_nil]; rfl
+/-! ### Cycles -/
 
-@[simp] lemma vertices_toPath_tail {i j : V} (e : i ⟶ j) :
-    (e.toPath).vertices.tail = [j] := by
-  simp [vertices_toPath]
+/-- A path is simple if it does not visit any vertex more than once, with the possible
+exception of the final vertex, which may be the same as the start vertex in a cycle. -/
+def IsSimple {a b : V} (p : Path a b) : Prop :=
+  p.vertices.dropLast.Nodup
 
-@[simp] lemma end_mem_vertices {a b : V} (p : Path a b) : b ∈ p.vertices := by
-  have h₁ : p.vertices.getLast (vertices_nonempty p) = b :=
-    vertices_getLast p (vertices_nonempty p)
-  have h₂ := List.getLast_mem (l := p.vertices) (vertices_nonempty p)
-  simpa [h₁] using h₂
+/-- A cycle is a non-trivial path from a vertex back to itself that does not repeat vertices,
+except for the start/end vertex. -/
+@[nolint unusedArguments]
+def IsCycle {a : V} (p : Path a a) : Prop :=
+  p.length > 0 ∧ IsSimple p
 
-lemma mem_vertices_to_active {V : Type*} [Quiver V]
-    {a b : V} {p : Path a b} {x : V} :
-    x ∈ p.vertices → x ∈ p.activeVertices := by
-  intro hx
-  induction p with
-  | nil =>
-      simpa [Quiver.Path.vertices_nil,
-             Quiver.Path.activeVertices_nil] using hx
-  | cons p' e ih =>
-      have hxSplit : x ∈ p'.vertices.dropLast ∨ x ∈ e.toPath.vertices := by
-        simpa [Quiver.Path.vertices_cons] using hx
-      cases hxSplit with
-      | inl h_in_drop =>
-          have : x ∈ p'.vertices := List.mem_of_mem_dropLast h_in_drop
-          have : x ∈ p'.activeVertices := ih this
-          exact (by
-            simpa [Quiver.Path.activeVertices_cons] using Or.inl this)
-      | inr h_in_edge =>
-          have h_edge : x = p'.end ∨ x = (p'.cons e).end := by
-            simpa [Quiver.Path.vertices_toPath,
-                   List.mem_cons, List.mem_singleton] using h_in_edge
-          cases h_edge with
-          | inl h_eq =>
-              have : x ∈ p'.activeVertices := by
-                subst h_eq; simp_all only [end_mem_vertices, forall_const, cons_eq_comp_toPath, vertices_comp,
-                  vertices_toPath, mem_append, mem_cons, not_mem_nil, or_false, true_or, or_true]
-              exact (by
-                simpa [Quiver.Path.activeVertices_cons] using Or.inl this)
-          | inr h_eq =>
-              have : x ∈ ({ (p'.cons e).end } : Set V) := by
-                simp only [cons_eq_comp_toPath, h_eq, Set.mem_singleton_iff]
-              exact (by
-                simpa [Quiver.Path.activeVertices_cons] using Or.inr this)
+lemma isSimple_of_isStrictlySimple {a b : V} {p : Path a b} (h : IsStrictlySimple p) : IsSimple p := by
+  unfold IsSimple IsStrictlySimple at *
+  simpa using h.sublist (List.dropLast_sublist (l := p.vertices))
+
+/-!
+# Acyclic Quivers
+
+This module defines acyclic quivers and proves that a quiver is acyclic if and only if it
+contains no simple cycles.
+
+## Main definitions
+
+* `Quiver.IsAcyclic`: A typeclass indicating that a quiver has no non-trivial paths from a
+  vertex to itself.
+* `Quiver.IsCycle`: A predicate on a path indicating it is a simple cycle.
+
+## Main results
+
+* `isAcyclic_iff_no_cycles`: A quiver is acyclic iff it contains no simple cycles.
+
+-/
+
+section Acyclic
+
+variable {V : Type*} [Quiver V]
+
+/-- A quiver is acyclic if there are no non-trivial paths from a vertex to itself. -/
+class IsAcyclic (V : Type*) [Quiver V] : Prop where
+  /-- The defining property of an acyclic quiver: any path from a vertex `a` to itself
+  must have length zero. -/
+  acyclic : ∀ (a : V) (p : Path a a), p.length = 0
+
+-- Expose the lemma in a more convenient form.
+lemma IsAcyclic.path_eq_nil {V : Type*} [Quiver V] [IsAcyclic V] {a : V} (p : Path a a) : p = Path.nil :=
+  Path.eq_nil_of_length_zero p (IsAcyclic.acyclic a p)
+
+lemma isAcyclic_iff_length_eq_zero :
+    IsAcyclic V ↔ ∀ {a : V} (p : Path a a), p.length = 0 := by
+  constructor
+  · intro h; exact fun {a} p ↦ IsAcyclic.acyclic a p
+  · intro h; exact { acyclic := fun a p ↦ h p }
+
+/-- If a quiver is acyclic, then it contains no simple cycles. -/
+lemma isAcyclic_of_no_cycles [DecidableEq V] :
+    IsAcyclic V → ∀ {a : V} (p : Path a a), ¬IsCycle p := by
+  intro h_acyclic a p h_cycle
+  have h_pos : p.length > 0 := h_cycle.1
+  have h_zero : p.length = 0 := IsAcyclic.acyclic a p
+  exact (Nat.not_lt.mpr (le_of_eq h_zero)) h_pos
+
+/-- There exists a positive loop shorter than p if q is such a loop. -/
+lemma exists_positive_loop_shorter_than_p [DecidableEq V] {a : V} {p : Path a a} (q : Path a a)
+    (h_q_pos : q.length > 0) (h_q_shorter : q.length < p.length) :
+    ∃ n, ∃ (r : Path a a), r.length = n ∧ r.length > 0 ∧ r.length < p.length := by
+  exact ⟨q.length, q, rfl, h_q_pos, h_q_shorter⟩
+
+open Classical
+
+
+/-- For any two positive loops shorter than p, their minimum length equals
+    the minimum length among all positive loops shorter than p, or there exists
+    an even shorter loop. -/
+lemma min_length_among_shorter_loops {a : V} {p : Path a a} (q r : Path a a)
+    (h_q_pos : q.length > 0) (h_r_pos : r.length > 0)
+    (h_q_shorter : q.length < p.length) (h_r_shorter : r.length < p.length) :
+    min q.length r.length = Nat.find (exists_positive_loop_shorter_than_p q h_q_pos h_q_shorter) ∨
+    ∃ (s : Path a a), s.length = Nat.find (exists_positive_loop_shorter_than_p q h_q_pos h_q_shorter) ∧
+                     s.length > 0 ∧ s.length < p.length ∧ s.length < min q.length r.length := by
+  let min_len := Nat.find (exists_positive_loop_shorter_than_p q h_q_pos h_q_shorter)
+  have h_min_spec := Nat.find_spec (exists_positive_loop_shorter_than_p q h_q_pos h_q_shorter)
+  obtain ⟨s, hs_eq, hs_pos, hs_shorter⟩ := h_min_spec
+  by_cases h : min_len < min q.length r.length
+  · right
+    exact ⟨s, hs_eq, hs_pos, hs_shorter, by rwa [hs_eq]⟩
+  · left
+    push_neg at h
+    have h_min_le_q : min_len ≤ q.length :=
+      Nat.find_min' (exists_positive_loop_shorter_than_p q h_q_pos h_q_shorter)
+                    ⟨q, rfl, h_q_pos, h_q_shorter⟩
+    have h_min_le_r : min_len ≤ r.length :=
+      Nat.find_min' (exists_positive_loop_shorter_than_p q h_q_pos h_q_shorter)
+                    ⟨r, rfl, h_r_pos, h_r_shorter⟩
+    have h_min_le_min : min_len ≤ min q.length r.length := by
+      apply le_min
+      · exact h_min_le_q
+      · exact h_min_le_r
+    exact le_antisymm h h_min_le_min
 
 /--
-If a path in the original quiver only visits vertices in a set `S`, it can be lifted
-to a path in the induced subquiver on `S`.
+Among all positive-length loops shorter than `p`, `q` is minimal.
 -/
-def lift_path_to_induced {S : Set n} [DecidablePred (· ∈ S)]  [Quiver V]
-    {i j : n} [Quiver n] (p : Path i j) (hp : ∀ k, k ∈ p.vertices → k ∈ S) :
-    letI : Quiver n := inferInstance
-    letI : Quiver S := inducedQuiver S
-    Path (⟨i, hp i (start_mem_vertices p)⟩ : S) (⟨j, hp j (end_mem_vertices p)⟩ : S) := by
-  letI : Quiver n := inferInstance
-  letI : Quiver S := inducedQuiver S
-  induction p with
-  | nil => exact Path.nil
-  | cons p' e ih =>
-    exact Path.cons (ih (fun k hk => hp k ((mem_vertices_cons p' e).mpr (Or.inl hk)))) e
+lemma shortest_among_shorter_loops [DecidableEq V] {a : V} {p : Path a a} (q : Path a a)
+    (_ : q.length > 0)
+    (h_q_shorter : q.length < p.length)
+    (h_q_minimal : ∀ r : Path a a, r.length > 0 → r.length < p.length → q.length ≤ r.length) :
+    ∀ r : Path a a, r.length > 0 → q.length ≤ r.length := by
+  intro r h_r_pos
+  by_cases h_r_shorter : r.length < p.length
+  · exact h_q_minimal r h_r_pos h_r_shorter
+  · have h_p_le_r : p.length ≤ r.length := le_of_not_gt h_r_shorter
+    exact le_trans (le_of_lt h_q_shorter) h_p_le_r
+
+/-- If there exists any positive-length loop at `a`, then there exists a shortest one. -/
+lemma exists_shortest_positive_loop [DecidableEq V] {a : V} (q : Path a a) (hq_pos : q.length > 0) :
+    ∃ (s : Path a a), s.length > 0 ∧ ∀ (r : Path a a), r.length > 0 → s.length ≤ r.length := by
+  let P := fun n => ∃ (r : Path a a), r.length = n ∧ r.length > 0
+  have hP_nonempty : ∃ n, P n := ⟨q.length, q, rfl, hq_pos⟩
+  let min_len := Nat.find hP_nonempty
+  have h_min_len_spec : P min_len := Nat.find_spec hP_nonempty
+  obtain ⟨s, hs_len, hs_pos⟩ := h_min_len_spec
+  use s
+  constructor
+  · exact hs_pos
+  · intro r hr_pos
+    have hr_prop : P r.length := ⟨r, rfl, hr_pos⟩
+    rw [hs_len]
+    exact Nat.find_min' hP_nonempty hr_prop
+
+/-- If n < m and m ≤ n, we have a contradiction -/
+private lemma Nat.lt_le_antisymm {n m : Nat} (h1 : n < m) (h2 : m ≤ n) : False :=
+  Nat.lt_irrefl n (Nat.lt_of_lt_of_le h1 h2)
+
+/-- If n ≥ m, then it's not the case that n < m. -/
+private lemma not_lt_of_ge {n m : Nat} (h : n ≥ m) : ¬(n < m) :=
+  fun h' => Nat.lt_le_antisymm h' h
+
+/-- If n > m, then it's not the case that n ≤ m -/
+private lemma not_le_of_gt {n m : Nat} (h : n > m) : ¬(n ≤ m) :=
+  fun h' => Nat.lt_le_antisymm h h'
+
+/-- Given a path with a repeated vertex, we can find that vertex and show it appears
+    in the dropLast portion of the prefix path. -/
+lemma repeated_vertex_in_prefix_dropLast [DecidableEq V] {a : V} (s : Path a a)
+    (h_not_simple : ¬IsStrictlySimple s) :
+    ∃ (v : V) (p₁ : Path a v) (p₂ : Path v a),
+      v ∈ p₁.vertices.dropLast ∧ s = p₁.comp p₂ ∧ v ∉ p₂.vertices.tail := by
+  obtain ⟨v, hv_in, hv_ge₂⟩ := not_strictly_simple_iff_exists_repeated_vertex.mp h_not_simple
+  obtain ⟨p₁, p₂, hp, hv_not_tail⟩ := exists_decomp_of_mem_vertices_prop s hv_in
+  have hv_in_p1_dropLast : v ∈ p₁.vertices.dropLast := by
+    have h_count_s : s.vertices.count v = (p₁.vertices.dropLast ++ p₂.vertices).count v := by
+      rw [hp, vertices_comp]
+    rw [h_count_s, List.count_append] at hv_ge₂
+    have h_count_p2 : p₂.vertices.count v = 1 := by
+      have h_head : p₂.vertices.head? = some v := by
+        cases p₂ with
+        | nil => simp [vertices_nil]
+        | cons _ _ => exact vertices_head? _
+      have hne : p₂.vertices ≠ [] := List.ne_nil_of_head?_eq_some h_head
+      have h_shape : p₂.vertices = v :: p₂.vertices.tail := by
+        have h_first : p₂.vertices.head? = some v := h_head
+        have h_decomp : ∃ h t, p₂.vertices = h :: t := List.exists_cons_of_ne_nil hne
+        rcases h_decomp with ⟨h, t, heq⟩
+        rw [heq]
+        have h_eq : h = v := by
+          rw [heq] at h_first
+          simp only [List.head?_cons] at h_first
+          exact Option.some.inj h_first
+        rw [h_eq]
+        have t_eq : t = p₂.vertices.tail := by rw [heq, List.tail_cons]
+        rw [t_eq]; exact rfl
+      rw [h_shape, List.count_cons_self, List.count_eq_zero_of_not_mem hv_not_tail]
+    have h_count_p1 : (p₁.vertices.dropLast).count v ≥ 1 := by
+      have h_sum : (p₁.vertices.dropLast).count v + p₂.vertices.count v ≥ 2 := hv_ge₂
+      rw [h_count_p2] at h_sum
+      linarith
+    exact (List.count_pos_iff).mp (by linarith)
+  exact ⟨v, p₁, p₂, hv_in_p1_dropLast, hp, hv_not_tail⟩
+
+lemma extract_cycle_from_prefix [DecidableEq V] {a vertex : V} {p₁ : Path a vertex}
+    (hvertex_in_p1_dropLast : vertex ∈ p₁.vertices.dropLast) :
+    ∃ (q : Path a vertex) (c : Path vertex vertex),
+      p₁ = q.comp c ∧ vertex ∉ q.vertices.dropLast := by
+  classical
+  let i := p₁.vertices.idxOf vertex
+  have h_mem : vertex ∈ p₁.vertices :=
+    List.mem_of_mem_dropLast hvertex_in_p1_dropLast
+  have hi_lt : i < p₁.vertices.length :=
+    List.idxOf_lt_length_of_mem h_mem
+  obtain ⟨v_split, q, c, h_comp, h_len, h_get⟩ := split_at_vertex p₁ i hi_lt
+  have hv_eq : v_split = vertex := by
+    have h_idx : p₁.vertices.get ⟨i, hi_lt⟩ = vertex :=
+      List.get_idxOf_of_mem h_mem
+    simpa [h_get] using h_idx
+  have hv_not_in_q : vertex ∉ q.vertices.dropLast := by
+    intro h_in
+    have h_decomp_vertices :
+        p₁.vertices = q.vertices.dropLast ++ c.vertices := by
+      simp [h_comp]
+    have h_prefix :
+        q.vertices.dropLast.IsPrefix p₁.vertices := by
+      simp [h_decomp_vertices]
+    have h_idx_eq :
+        p₁.vertices.idxOf vertex =
+          (q.vertices.dropLast).idxOf vertex :=
+      List.idxOf_eq_idxOf_of_isPrefix h_prefix h_in
+    have h_idx_prefix_lt :
+        (q.vertices.dropLast).idxOf vertex <
+          (q.vertices.dropLast).length :=
+      List.idxOf_lt_length_of_mem h_in
+    have h_len_drop :
+        (q.vertices.dropLast).length = q.length := by
+      simp [List.length_dropLast, vertices_length]
+    have : i < i := by
+      have : (q.vertices.dropLast).idxOf vertex < i := by
+        simpa [h_len_drop, h_len] using h_idx_prefix_lt
+      simpa [i, h_idx_eq]
+    exact (lt_irrefl _ this)
+  subst hv_eq
+  exact ⟨q, c, h_comp, hv_not_in_q⟩
+
+lemma extract_cycle_from_prefix' [DecidableEq V] {a v : V} {p₁ : Path a v}
+    (hv_in_p1_dropLast : v ∈ p₁.vertices.dropLast) :
+    ∃ (q : Path a v) (c : Path v v),
+      p₁ = q.comp c := by
+  obtain ⟨q, c, h_split⟩ :=
+    exists_decomp_of_mem_vertices p₁ (List.mem_of_mem_dropLast hv_in_p1_dropLast)
+  exact ⟨q, c, h_split⟩
+
+/-- A cycle extracted from a path with a repeated vertex has positive length. -/
+lemma extracted_cycle_has_positive_length [DecidableEq V] {a v : V}
+    {p₁ q : Path a v} {c : Path v v}
+    (h_p1_split : p₁ = q.comp c)
+    (hv_in_p1_dropLast : v ∈ p₁.vertices.dropLast)
+    (hv_not_in_q : v ∉ q.vertices.dropLast) : c.length > 0 := by
+  by_cases h_len_zero : c.length = 0
+  · have hc_nil : c = Path.nil := (length_eq_zero_iff c).mp h_len_zero
+    have h_p1_eq_q : p₁ = q := by
+      rw [h_p1_split, hc_nil, comp_nil]
+    have h_v_in_q : v ∈ q.vertices.dropLast := by
+      subst h_p1_eq_q
+      exact hv_in_p1_dropLast
+    exact False.elim (hv_not_in_q h_v_in_q)
+  · exact Nat.pos_of_ne_zero h_len_zero
+
+/-- Removing a cycle from a path creates a strictly shorter path. -/
+lemma removing_cycle_gives_shorter_path [DecidableEq V] {a : V} {s : Path a a}
+    {q : Path a v} {c : Path v v} {p₂ : Path v a}
+    (hp : s = (q.comp c).comp p₂) (hc_pos : c.length > 0) : (q.comp p₂).length < s.length := by
+  have h_len_shorter : (q.comp p₂).length = q.length + p₂.length := by
+    rw [length_comp]
+  have h_len_s : s.length = q.length + c.length + p₂.length := by
+    rw [hp, comp_assoc, length_comp, length_comp]
+    ring
+  rw [h_len_shorter, h_len_s]
+  subst hp
+  simp_all only [le_refl, gt_iff_lt, length_comp, comp_assoc, add_lt_add_iff_right,
+    lt_add_iff_pos_right, Nat.eq_of_le_zero]
+
+/-
+/-- A shortest positive loop is strictly simple. -/
+theorem shortest_positive_loop_is_strictly_simple {a : V} :
+    ∀ (c : Path a a), c.length > 0 → (∀ p' : Path a a, p'.length > 0 → c.length ≤ p'.length) →
+    c.IsStrictlySimple := by sorry
+-/

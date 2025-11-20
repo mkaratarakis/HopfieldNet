@@ -97,7 +97,7 @@ theorem upperSemicontinuousOn
       · exact continuous_apply i |>.comp_continuousOn ((mulVec_continuousLinearMap A).continuous.continuousOn)
       · exact (continuous_apply i).continuousOn
       · intro y hy
-        simp only [Set.mem_setOf_eq] at hy
+        simp only at hy
         exact (hy i hi).ne'
     have f_ge : ∀ y ∈ U ∩ stdSimplex ℝ n, collatzWielandtFn A y ≤ f y := by
       intro y hy
@@ -170,7 +170,7 @@ lemma eq_iInf_of_nonempty
   · simp_all
     obtain ⟨val, property⟩ := b
     simp_all only [Subtype.mk.injEq, exists_prop, exists_eq_right]
-  simp [Set.mem_toFinset]
+  simp
 
 omit [Nonempty n] in
 /-- If r ≤ 0 and r is the infimum of non-negative ratios, then r = 0. -/
@@ -307,7 +307,7 @@ lemma smul [Fintype n] [Nonempty n] [DecidableEq n] {c : ℝ} (hc : 0 < c) (_ : 
   dsimp [collatzWielandtFn]
   let S := {i | 0 < x i}.toFinset
   obtain ⟨i₀, hi₀⟩ := exists_pos_of_ne_zero hx_nonneg hx_ne
-  have hS_nonempty : S.Nonempty := ⟨i₀, by simp [S, Set.mem_toFinset, hi₀]⟩
+  have hS_nonempty : S.Nonempty := ⟨i₀, by simp [S, hi₀]⟩
   have h_supp_eq : {i | 0 < (c • x) i}.toFinset = S := by
     ext i
     simp [S, Set.mem_toFinset, Set.mem_setOf_eq, smul_eq_mul, mul_pos_iff_of_pos_left hc]
@@ -383,7 +383,7 @@ theorem eq_eigenvalue_of_positive_eigenvector
   dsimp [collatzWielandtFn]
   have h_supp_nonempty : ({i | 0 < v i}.toFinset).Nonempty := by
     let i0 := Classical.arbitrary n
-    simp [Set.mem_toFinset, hv_pos i0]
+    simp
     simp_all only [filter_True, Finset.univ_nonempty]
   rw [dif_pos h_supp_nonempty]
   apply Finset.inf'_eq_of_forall_le_of_exists_le h_supp_nonempty
@@ -442,7 +442,7 @@ theorem eigenvalue_le_perron_root_of_positive_eigenvector
     intro h
     have hcontr : (0 : ℝ) < 0 := by
       have hpos := hv_pos (Classical.arbitrary n)
-      simp [h, Pi.zero_apply] at hpos
+      simp [h] at hpos
     exact (lt_irrefl _ hcontr).elim
   have h_r : r = collatzWielandtFn A v :=
     (eq_eigenvalue_of_positive_eigenvector hv_pos h_eig).symm
@@ -609,7 +609,7 @@ theorem le_eigenvalue_of_right_eigenvector [Nonempty n]  [DecidableEq n]
     simp only [mul_apply]
     apply Finset.sum_nonneg
     intro k _
-    simp only [mul_apply, diagonal_apply]
+    simp only [diagonal_apply]
     by_cases hik : i = k
     · by_cases hkj : k = j
       · simp [hik, hkj]
@@ -663,9 +663,9 @@ theorem le_eigenvalue_of_right_eigenvector [Nonempty n]  [DecidableEq n]
       unfold D_inv
       rw [diagonal_apply]
       by_cases hij : i = j
-      · simp only [hij, ↓reduceIte, Pi.inv_apply, inv_nonneg, x, D_inv, B, D]
+      · simp only [hij, ↓reduceIte, Pi.inv_apply, inv_nonneg]
         exact le_of_lt (hv_pos j)
-      · simp only [hij, ↓reduceIte, le_refl, x, D_inv, B, D]
+      · simp only [hij, ↓reduceIte, le_refl]
     intro i
     have h_comp_le : ((collatzWielandtFn A w) • w) i ≤ (A *ᵥ w) i := h_smul_le i
     have h_mulVec_mono : (D_inv *ᵥ ((collatzWielandtFn A w) • w)) i ≤ (D_inv *ᵥ (A *ᵥ w)) i := by

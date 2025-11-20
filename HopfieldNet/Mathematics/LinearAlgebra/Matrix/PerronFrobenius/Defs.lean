@@ -64,7 +64,7 @@ lemma irreducible_no_zero_row
   by_contra h_row ; push_neg at h_row   -- `h_row : ∀ j, A i j ≤ 0`
   letI G := toQuiver A
   have no_out : ∀ j : n, IsEmpty (i ⟶ j) :=
-    fun j ↦ ⟨fun h ↦ (h_row j).not_lt h⟩
+    fun j ↦ ⟨fun h ↦ (h_row j).not_gt h⟩
   obtain ⟨j, hij⟩ := Fintype.exists_ne_of_one_lt_card h_dim i
   obtain ⟨⟨p, _⟩⟩ := h_irr.2 i j
   have : False := by
@@ -102,7 +102,7 @@ theorem pow_entry_pos_iff_exists_path [DecidableEq n] (hA : ∀ i j, 0 ≤ A i j
     letI := toQuiver A; 0 < (A ^ k) i j ↔ Nonempty {p : Path i j // p.length = k} := by
   induction k generalizing i j with
   | zero =>
-    simp only [pow_zero, one_apply, Quiver.Path.length_nil, gt_iff_lt, zero_lt_one, nonempty_subtype]
+    simp only [pow_zero, one_apply, nonempty_subtype]
     constructor
     · intro h_pos
       split_ifs at h_pos with h_eq

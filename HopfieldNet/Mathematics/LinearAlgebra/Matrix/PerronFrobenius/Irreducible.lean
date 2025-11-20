@@ -48,8 +48,8 @@ theorem Irreducible.add_one (h_irred : Irreducible A) : Irreducible (1 + A) := b
     let pB : Path i j := loop.comp (rec_path pA)
     have hpB_len : pB.length > 0 := by
       rw [@length_comp]
-      simp only [le_refl, gt_iff_lt, add_pos_iff, List.Nat.eq_of_le_zero, B]
-      simp_all only [add_apply, le_refl, gt_iff_lt, cons_eq_comp_toPath, nil_comp, length_toPath, Nat.lt_one_iff,
+      simp only [le_refl, gt_iff_lt, add_pos_iff, List.Nat.eq_of_le_zero]
+      simp_all only [gt_iff_lt, cons_eq_comp_toPath, nil_comp, length_toPath, Nat.lt_one_iff,
         pos_of_gt, true_or, B, GA, GB, loop]
     have hpB_pos :
         Quiver.Path.length pB > 0 := by
@@ -71,7 +71,7 @@ lemma eigenvector_no_zero_entries_of_irreducible [Fintype n]
   let S : Set n := { i | 0 < v i }
   let T : Set n := { i | v i = 0 }
   have hS_nonempty : S.Nonempty := exists_pos_of_ne_zero hv_nonneg hv_ne_zero
-  have hT_nonempty : T.Nonempty := ⟨i₀, by simp [T, hi₀_zero, le_antisymm hi₀_zero (hv_nonneg i₀)]⟩
+  have hT_nonempty : T.Nonempty := ⟨i₀, by simp [T, le_antisymm hi₀_zero (hv_nonneg i₀)]⟩
   have hT_ne_univ : T ≠ Set.univ := by
     intro h_univ
     have hv_zero : v = 0 := by
@@ -209,9 +209,7 @@ theorem exists_positive_eigenvector_of_irreducible
   exact ⟨rB - 1, v, hrA_pos, hv_pos, h_eig_A⟩
 
 omit [Nonempty n] in
-/-!
-A non-zero, non-negative eigenvector of an irreducible matrix is in fact **strictly** positive.
--/
+/-! A non-zero, non-negative eigenvector of an irreducible matrix is in fact **strictly** positive. -/
 lemma eigenvector_is_positive_of_irreducible {r : ℝ}
     (hA_irred : Irreducible A)
     {v : n → ℝ} (h_eig : A *ᵥ v = r • v)
@@ -297,11 +295,11 @@ theorem uniqueness_of_positive_eigenvector_gen
       A *ᵥ z
           = A *ᵥ v - A *ᵥ (c • w) := by
               simp only [mulVec_sub, z]
-      _   = r • v - c • (r • w)   := by
-              simp only [hv_eig, mulVec_smul, hw_eig, z]
-      _   = r • (v - c • w)       := by
+      _   = r • v - c • (r • w) := by
+              simp only [hv_eig, mulVec_smul, hw_eig]
+      _   = r • (v - c • w) := by
               rw [smul_sub, smul_comm, ← smul_assoc]
-      _   = r • z                 := by
+      _   = r • z := by
               simp only [z]
   -- 3.  z ≥ 0
   have hz_nonneg : ∀ i, 0 ≤ z i := by
@@ -479,11 +477,11 @@ theorem pft_primitive
       have h_pos : 0 < d * v0 j₀ := mul_pos hd_pos v0_j₀_pos
       have h1 : d * r * v0 j₀ ≤ r' * w.1 j₀ := by
         calc
-          d * r * v0 j₀ = d * (r * v0 j₀)       := by ring
-          _ = d * (A *ᵥ v0) j₀                  := by simp only [hv0_eig, Pi.smul_apply,
+          d * r * v0 j₀ = d * (r * v0 j₀) := by ring
+          _ = d * (A *ᵥ v0) j₀ := by simp only [hv0_eig, Pi.smul_apply,
             smul_eq_mul]
-          _ ≤ (A *ᵥ w.1) j₀                     := h_sum2
-          _ = r' * w.1 j₀                       := by simp only [hw_eig, Pi.smul_apply,
+          _ ≤ (A *ᵥ w.1) j₀ := h_sum2
+          _ = r' * w.1 j₀ := by simp only [hw_eig, Pi.smul_apply,
             smul_eq_mul]
       have h2 : d * r * v0 j₀ ≤ r' * (d * v0 j₀) := by
         rwa [w_j₀_eq] at h1
@@ -507,7 +505,7 @@ theorem pft_primitive
                simp only [hc'_eq, Pi.smul_apply, smul_eq_mul]
         _  = 1                      := h_sum_v0
     ext i
-    simp [hc'_eq, hc'_one, smul_eq_mul]
+    simp [hc'_eq, hc'_one]
 open Quiver
 
 lemma Irreducible.exists_pos_entry
@@ -608,7 +606,7 @@ theorem pft_irreducible {n : Type*} [Fintype n] [Nonempty n] [DecidableEq n]
     have h_eig_A'_r : A *ᵥ v'.val = r • v'.val := by
       subst hr_eq
       simp_all only [add_apply, one_apply_eq, gt_iff_lt, exists_prop, forall_exists_index, and_imp, Subtype.forall,
-        sub_pos, implies_true, B, r, v_pos]
+        sub_pos, implies_true, B, r]
     obtain ⟨c, hc_pos, hcv⟩ :=
       uniqueness_of_positive_eigenvector_gen
         hA_irred hr_pos v_pos' v'_pos h_eig_A h_eig_A'_r
