@@ -928,3 +928,38 @@ lemma Hebbian_stable (hm : m < card U) (ps : Fin m → (HopfieldNetwork R U).Sta
     simpa only [sub_pos, Nat.cast_lt]
   apply stateisStablecondition ps (ps j) (card U - m) hmn0
   · intros u; rw [funext_iff] at this; exact this u
+
+
+lemma dotProduct_act_self (s : (HopfieldNetwork R U).State) :
+  dotProduct s.act s.act = card U := by
+  unfold dotProduct
+  have hsq : ∀ u, s.act u * s.act u = 1 := by
+    intro u
+    have h := s.act_one_or_neg_one u
+    cases h with
+    | inl h1 => simp only [h1, mul_one]
+    | inr h2 => simp only [h2, mul_neg, mul_one, neg_neg]
+  simp_rw [hsq]
+  simp [sum_const, card_univ, nsmul_eq_mul]
+
+/- Disturbance term for non-orthogonal patterns. -/
+def disturbance (ps : Fin m → (HopfieldNetwork R U).State) (j : Fin m) : (U → R) :=
+fun u => ∑ i : Fin m, if i ≠ j then (ps i).act u * dotProduct (ps i).act (ps j).act else 0
+
+/-- Full perturbed Hopfield update -/
+def Wpj_perturbed (ps : Fin m → (HopfieldNetwork R U).State) (j : Fin m) : (U → R) :=
+fun u => (card U - m : R) * (ps j).act u + disturbance ps j u
+
+def neuron_update_perturbed (ps : Fin m → (HopfieldNetwork R U).State) (j : Fin m) : (U → R) :=
+fun u => HNfact 0 (Wpj_perturbed ps j u)
+
+lemma patterns_general (ps : Fin m → (HopfieldNetwork R U).State) (j : Fin m) :
+  ((Hebbian ps).w).mulVec (ps j).act =
+    (card U - m : R) • (ps j).act + disturbance ps j := by
+  unfold Hebbian
+  simp only [ne_eq, ite_not]
+  ext t
+  rw [mulVec, dotProduct]
+  unfold disturbance
+  simp only [sub_apply, smul_apply, smul_eq_mul, ne_eq, ite_not, Pi.add_apply, Pi.smul_apply]
+  sorry

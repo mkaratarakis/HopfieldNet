@@ -145,25 +145,6 @@ lemma ing_plus (x y : K) : inject_Q (x + y) = inject_Q x + inject_Q y := by
 --  astepr (x[+]y[-] (x[+]y)); eauto with arith.
 -- Qed.
 
-
--- Lemma ing_plus : forall x y : F, inject_Q (x[+]y) [=] inject_Q x[+]inject_Q y.
--- Proof.
---  intros.
---  unfold inject_Q in |- *.
---  simpl in |- *; intro H.
---  elim H; intro.
---   elim a; intros N HN.
---   elim HN; clear H a HN; intros e He HN; simpl in HN.
---   apply (less_irreflexive_unfolded _ e).
---   apply leEq_less_trans with ([0]:F); auto.
---   astepr (x[+]y[-] (x[+]y)); eauto with arith.
---  elim b; intros N HN.
---  elim HN; clear H b HN; intros e He HN; simpl in HN.
---  apply (less_irreflexive_unfolded _ e).
---  apply leEq_less_trans with ([0]:F); auto.
---  astepr (x[+]y[-] (x[+]y)); eauto with arith.
--- Qed.
-
 -- Lemma ing_min : forall x : F, inject_Q [--]x [=] [--] (inject_Q x).
 -- Proof.
 --  intros.
@@ -282,6 +263,23 @@ lemma ing_cancel_less {x y : K} (h : inject_Q x < inject_Q y) : x < y := by {
 --  apply ing_cancel_less.
 --  auto.
 -- Qed.
+
+-- Lemma ing_le : forall x y : F, x [<=] y -> inject_Q x [<=] inject_Q y.
+-- Proof.
+--  intros.
+--  intro.
+--  rewrite -> leEq_def in H; apply H.
+--  apply ing_cancel_less.
+--  auto.
+-- Qed.
+
+instance :   LE (CauchySeq' K) := sorry
+
+/--
+If `x ≤ y` in `K`, then `inject_Q x ≤ inject_Q y` in the Cauchy completion.
+-/
+lemma ing_le {x y : K} (h : x ≤ y) : inject_Q x ≤ inject_Q y := by
+  apply?
 
 -- Lemma ing_cancel_leEq : forall x y : F, inject_Q x [<=] inject_Q y -> x [<=] y.
 -- Proof.

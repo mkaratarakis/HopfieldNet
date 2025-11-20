@@ -52,6 +52,9 @@ import HopfieldNet.CReals.RNS.CoRNalgebraCOrdCauchy
 
 -- Variable F : COrdField.
 
+variable [Field F] [LinearOrder F] [IsStrictOrderedRing F]
+
+
 -- (**
 -- ** Setoid Structure
 
@@ -64,14 +67,109 @@ import HopfieldNet.CReals.RNS.CoRNalgebraCOrdCauchy
 
 -- Definition R_Set := CauchySeq F.
 
+def R_Set (F: Type) [Field F] [LinearOrder F] [IsStrictOrderedRing F] := CauchySeq' F
+
 -- Section CSetoid_Structure.
 
 -- Definition R_lt (x y : R_Set) := {N : nat |
 --   {e : F | [0] [<] e | forall n, N <= n -> e [<=] CS_seq _ y n[-]CS_seq _ x n}}.
 
+def R_lt (F: Type) [Field F] [LinearOrder F] [IsStrictOrderedRing F] (x y : R_Set F) : Prop :=
+    ∃ N : ℕ, ∃ e : F, (0 < e) ∧ ∀ n, N ≤ n → e ≤ (y.CS_seq n - x.CS_seq n)
+
 -- Definition R_ap (x y : R_Set) := R_lt x y or R_lt y x.
 
+def R_ap (F: Type) [Field F] [LinearOrder F] [IsStrictOrderedRing F] (x y : R_Set F) : Prop :=
+    R_lt F x y ∨ R_lt F y x
+
 -- Definition R_eq (x y : R_Set) := Not (R_ap x y).
+
+def R_eq (F: Type) [Field F] [LinearOrder F] [IsStrictOrderedRing F] (x y : R_Set F) : Prop :=
+    ¬ (R_lt F x y ∨ R_lt F y x)
+
+-- Lemma R_lt_cotrans : cotransitive R_lt.
+-- Proof.
+--  red in |- *.
+--  intros x y.
+--  elim x; intros x_ px.
+--  elim y; intros y_ py.
+--  intros Hxy z.
+--  elim z; intros z_ pz.
+--  elim Hxy; intros N H.
+--  elim H; clear Hxy H; intros e He HN.
+--  simpl in HN.
+--  set (e3 := e [/]ThreeNZ) in *.
+--  cut ([0] [<] e3); [ intro He3 | unfold e3 in |- *; apply pos_div_three; auto ].
+--  set (e6 := e [/]SixNZ) in *.
+--  cut ([0] [<] e6); [ intro He6 | unfold e6 in |- *; apply pos_div_six; auto ].
+--  set (e12 := e [/]TwelveNZ) in *.
+--  cut ([0] [<] e12); [ intro He12 | unfold e12 in |- *; apply pos_div_twelve; auto ].
+--  set (e24 := e [/]TwentyFourNZ) in *.
+--  cut ([0] [<] e24); [ intro He24 | unfold e24 in |- *; apply pos_div_twentyfour; auto ].
+--  elim (px e24 He24); intros Nx HNx.
+--  elim (py e24 He24); intros Ny HNy.
+--  elim (pz e24 He24); intros Nz HNz.
+--  set (NN := Nat.max N (Nat.max Nx (Nat.max Ny Nz))) in *.
+--  set (x0 := x_ NN) in *.
+--  set (y0 := y_ NN) in *.
+--  set (z0 := z_ NN) in *.
+--  elim (less_cotransitive_unfolded _ (x0[+]e3) (y0[-]e3)) with z0.
+--    intro Hyz.
+--    left.
+--    exists NN; exists e6; auto.
+--    intros n Hn; simpl in |- *.
+--    apply leEq_wdl with (e3[-] (e24[+]e24[+]e24[+]e24)).
+--     2: unfold e3, e6, e12, e24 in |- *; rational.
+--    apply leEq_transitive
+--      with (e3[-] (z0[-]z_ Nz[+] (z_ Nz[-]z_ n) [+] (x_ n[-]x_ Nx) [+] (x_ Nx[-]x0))).
+--     apply minus_resp_leEq_rht.
+--     repeat apply plus_resp_leEq_both.
+--        unfold z0 in |- *; elim (HNz NN); auto; unfold NN in |- *; eauto with arith.
+--       apply shift_minus_leEq; apply shift_leEq_plus'.
+--       unfold cg_minus in |- *; apply shift_plus_leEq'.
+--       elim (HNz n); auto; apply Nat.le_trans with NN; auto; unfold NN in |- *; eauto with arith.
+--      elim (HNx n); auto; apply Nat.le_trans with NN; auto; unfold NN in |- *; eauto with arith.
+--     apply shift_minus_leEq; apply shift_leEq_plus'.
+--     unfold cg_minus in |- *; apply shift_plus_leEq'.
+--     unfold x0 in |- *; elim (HNx NN); auto; unfold NN in |- *; eauto with arith.
+--    apply shift_minus_leEq.
+--    rstepr (z0[-]x0).
+--    apply shift_leEq_minus; astepl (x0[+]e3); apply less_leEq; auto.
+--   intro Hzx.
+--   right.
+--   exists NN; exists e6; auto.
+--   intros n Hn; simpl in |- *.
+--   apply leEq_wdl with (e3[-] (e24[+]e24[+]e24[+]e24)).
+--    2: unfold e3, e6, e12, e24 in |- *; rational.
+--   apply leEq_transitive
+--     with (e3[-] (z_ Nz[-]z0[+] (z_ n[-]z_ Nz) [+] (y_ Ny[-]y_ n) [+] (y0[-]y_ Ny))).
+--    apply minus_resp_leEq_rht.
+--    repeat apply plus_resp_leEq_both.
+--       apply shift_minus_leEq; apply shift_leEq_plus'.
+--       unfold cg_minus in |- *; apply shift_plus_leEq'.
+--       unfold z0 in |- *; elim (HNz NN); auto; unfold NN in |- *; eauto with arith.
+--      elim (HNz n); auto; apply Nat.le_trans with NN; auto; unfold NN in |- *; eauto with arith.
+--     apply shift_minus_leEq; apply shift_leEq_plus'.
+--     unfold cg_minus in |- *; apply shift_plus_leEq'.
+--     elim (HNy n); auto; apply Nat.le_trans with NN; auto; unfold NN in |- *; eauto with arith.
+--    unfold y0 in |- *; elim (HNy NN); auto; unfold NN in |- *; eauto with arith.
+--   apply shift_minus_leEq.
+--   rstepr (y0[-]z0).
+--   apply shift_leEq_minus; apply shift_plus_leEq'; apply less_leEq; auto.
+--  apply shift_less_minus.
+--  astepl (x0[+] (e3[+]e3)); apply shift_plus_less'.
+--  apply less_leEq_trans with e.
+--   apply shift_plus_less.
+--   apply less_wdl with ((e[-]e3) [/]TwoNZ).
+--    2: unfold e3 in |- *; rational.
+--   apply pos_div_two'.
+--   apply shift_less_minus; astepl e3; unfold e3 in |- *; apply pos_div_three'; auto.
+--  unfold x0, y0, NN in |- *; apply HN; eauto with arith.
+-- Qed.
+
+-- Cotransitivity of R_lt: if R_lt x y, then for any z, R_lt x z or R_lt z y.
+theorem R_lt_cotrans (F : Type) [Field F] [LinearOrder F] [IsStrictOrderedRing F] :
+  ∀ x y z : R_Set F, R_lt F x y → (R_lt F x z ∨ R_lt F z y) := sorry
 
 -- Lemma R_lt_cotrans : cotransitive R_lt.
 -- Proof.
@@ -159,10 +257,42 @@ import HopfieldNet.CReals.RNS.CoRNalgebraCOrdCauchy
 --  elim Hxy; intro H; elim (R_lt_cotrans _ _ H z); unfold R_ap in |- *; auto.
 -- Qed.
 
+-- Cotransitivity of R_ap: if R_ap x y, then for any z, R_ap x z or R_ap z y.
+theorem R_ap_cotrans (F : Type) [Field F] [LinearOrder F] [IsStrictOrderedRing F] :
+    ∀ x y z : R_Set F, R_ap F x y → (R_ap F x z ∨ R_ap F z y) := by
+    intros x y z Hxy
+    cases' Hxy with Hxy_lt Hxy_lt
+    · cases' R_lt_cotrans F x y z Hxy_lt with Hxz Hzy
+      · left; left; exact Hxz
+      · right; left; exact Hzy
+    · cases' R_lt_cotrans F y x z Hxy_lt with Hyz Hzx
+      · right; right; exact Hyz
+      · left; right; exact Hzx
+
 -- Lemma R_ap_symmetric : Csymmetric R_ap.
 -- Proof.
 --  red in |- *; intros x y Hxy.
 --  elim Hxy; unfold R_ap in |- *; auto.
+-- Qed.
+
+-- Symmetry of R_ap: if R_ap x y then R_ap y x.
+theorem R_ap_symmetric (F : Type) [Field F] [LinearOrder F] [IsStrictOrderedRing F] :
+    ∀ x y : R_Set F, R_ap F x y → R_ap F y x := by
+    intros x y Hxy
+    cases Hxy with
+    | inl H => exact Or.inr H
+    | inr H => exact Or.inl H
+
+-- Lemma R_lt_irreflexive : irreflexive R_lt.
+-- Proof.
+--  red in |- *; intros x Hx.
+--  elim Hx; intros N HN.
+--  elim HN; clear Hx HN; intros e He HN.
+--  apply (ap_irreflexive_unfolded _ (x N)).
+--  apply less_imp_ap.
+--  apply less_leEq_trans with (x N[+]e).
+--   astepl (x N[+][0]); apply plus_resp_less_lft; auto.
+--  apply shift_plus_leEq'; auto with arith.
 -- Qed.
 
 -- Lemma R_lt_irreflexive : irreflexive R_lt.
@@ -175,6 +305,13 @@ import HopfieldNet.CReals.RNS.CoRNalgebraCOrdCauchy
 --  apply less_leEq_trans with (x N[+]e).
 --   astepl (x N[+][0]); apply plus_resp_less_lft; auto.
 --  apply shift_plus_leEq'; auto with arith.
+-- Qed.
+
+-- Lemma R_ap_irreflexive : irreflexive R_ap.
+-- Proof.
+--  red in |- *; intros x Hx.
+--  elim (R_lt_irreflexive x).
+--  elim Hx; auto.
 -- Qed.
 
 -- Lemma R_ap_irreflexive : irreflexive R_ap.
