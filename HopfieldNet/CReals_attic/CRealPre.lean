@@ -12,7 +12,6 @@ import Mathlib.Data.Int.Star
 import Mathlib.Data.Nat.Log
 import Mathlib.Data.Rat.Star
 import Mathlib.Tactic
-import Mathlib.Analysis.SpecialFunctions.Exp
 
 /-!
 # Foundational Definitions for Computable Real Numbers
@@ -315,7 +314,7 @@ protected def Pre.mul (x y : CReal.Pre) : CReal.Pre where
     intro n m hnm
     let S := x.mulShift y
     let kₙ := n + S; let kₘ := m + S
-    have hknm : kₙ ≤ kₘ := sorry--add_le_add_right hnm S
+    have hknm : kₙ ≤ kₘ := add_le_add_right hnm S
     let Bx := x.cBound; let By := y.cBound
     have h_core := product_diff_bound x y hknm (Bx:ℚ) (By:ℚ) (x.abs_approx_le_cBound kₙ) (y.abs_approx_le_cBound kₘ)
     have h_S := x.sum_cBound_le_pow_mulShift y
@@ -442,7 +441,7 @@ lemma mul_regularity_bound
   set S := x.mulShift y
   let ks   := k_small + S
   let kbS  := k_big + S
-  have h_le' : ks ≤ kbS := sorry--add_le_add_right h_le S
+  have h_le' : ks ≤ kbS := add_le_add_right h_le S
   have h_core :=
     product_diff_bound x y h_le' (x.cBound) (y.cBound)
       (x.abs_approx_le_cBound ks) (y.abs_approx_le_cBound kbS)
@@ -1085,13 +1084,13 @@ lemma mul_assoc_bound (a b c : CReal.Pre) (k : ℕ) :
     | inl h_le =>
         rw [min_eq_left h_le]
         have h_core := ternary_product_diff_bound a b c h_le
-        exact (le_trans h_core (by
+        exact (le_trans h_core (by 
           simp_all only [add_le_add_iff_left, one_div, P1, K1, S1, Bc, Ba, Bb, P2, K2, S2, B_ternary]
           rfl))
     | inr h_le =>
         rw [min_eq_right h_le, abs_sub_comm]
         have h_core := ternary_product_diff_bound a b c h_le
-        exact (le_trans h_core (by
+        exact (le_trans h_core (by 
           simp_all only [add_le_add_iff_left, one_div, P1, K1, S1, Bc, Ba, Bb, P2, K2, S2, B_ternary]
           rfl))
   have h_K1_ge_k : k ≤ K1 := Nat.le_add_right k S1
@@ -2306,7 +2305,7 @@ theorem lt_iff_pos (x y : CReal) : x < y ↔ Pos (y - x) := by
   constructor
   · refine Quot.induction_on₂ x y (fun x_pre y_pre => ?_)
     intro hlt
-
+    
     have h_le : CReal.Pre.le x_pre y_pre := by
       simpa using hlt.1
     have h_not_le : ¬ CReal.Pre.le y_pre x_pre := by
@@ -2504,14 +2503,8 @@ theorem mul_le_mul_of_nonneg_right' (a b c : CReal) (h : a ≤ b) (hc : 0 ≤ c)
 instance : IsOrderedRing CReal where
   add_le_add_left := add_le_add_left
   zero_le_one := zero_le_one
-  mul_le_mul_of_nonneg_left := by
-    intro a ha b c hbc
-    -- `PosMulMono` expects the nonneg multiplier first.
-    exact mul_le_mul_of_nonneg_left' b c a hbc ha
-  mul_le_mul_of_nonneg_right := by
-    intro a ha b c hbc
-    -- `MulPosMono` expects the nonneg multiplier first.
-    exact mul_le_mul_of_nonneg_right' b c a hbc ha
+  mul_le_mul_of_nonneg_left := mul_le_mul_of_nonneg_left'
+  mul_le_mul_of_nonneg_right := mul_le_mul_of_nonneg_right'
 
 /-! ### Archimedean Property -/
 
@@ -3716,6 +3709,7 @@ theorem pseudo_order_property (x y z : CReal) (hxy : x < y) : x < z ∨ z < y :=
   let m_K := (x_pre.approx K + y_pre.approx K) / 2
   cases le_or_gt (z_pre.approx K) m_K with
   | inl h_le =>
+    -- z < y branch
     right
     apply (lt_iff_pos ⟦z_pre⟧ ⟦y_pre⟧).mpr
     dsimp [Pos, CReal.Pre.Pos]
@@ -3725,6 +3719,7 @@ theorem pseudo_order_property (x y z : CReal) (hxy : x < y) : x < z ∨ z < y :=
         (y_pre.approx K - x_pre.approx K)/2
             = y_pre.approx K - (x_pre.approx K + y_pre.approx K)/2 := by ring
         _ ≤ y_pre.approx K - z_pre.approx K := sub_le_sub_left h_le _
+    -- one–step regularity triples
     have hy_pair :=
       (abs_sub_le_iff).1 (by simpa using y_pre.is_regular K (K+1) (Nat.le_succ _))
     have hz_pair :=
@@ -3815,7 +3810,9 @@ theorem pseudo_order_property (x y z : CReal) (hxy : x < y) : x < z ∨ z < y :=
           using h_core_margin
       have h_trans := lt_of_lt_of_le h_base h_comp
       simpa [M] using h_trans
+    -- Provide witness M
     refine ⟨M, ?_⟩
+    -- Expand and apply h_margin directly
     have h_expand :
       (y_pre.add z_pre.neg).approx (M+1) =
         y_pre.approx (K+1) - z_pre.approx (K+1) := by
@@ -3829,18 +3826,22 @@ theorem pseudo_order_property (x y z : CReal) (hxy : x < y) : x < z ∨ z < y :=
         using h_margin
     exact h_witness
   | inr h_gt =>
+    -- FIXED second branch
     left
     apply (lt_iff_pos ⟦x_pre⟧ ⟦z_pre⟧).mpr
     dsimp [Pos, CReal.Pre.Pos]
+    -- Midpoint inequality gives half-gap at index K
     have h_diff_gt_half :
         (y_pre.approx K - x_pre.approx K)/2 < z_pre.approx K - x_pre.approx K := by
       calc
         (y_pre.approx K - x_pre.approx K)/2
             = (x_pre.approx K + y_pre.approx K)/2 - x_pre.approx K := by ring
         _ < z_pre.approx K - x_pre.approx K := sub_lt_sub_right h_gt _
+    -- Regularity from N+2 to K
     have hN2_le_K : N + 2 ≤ K := by simp [K,M]
     have hy_reg := (abs_sub_le_iff).1 (by simpa using y_pre.is_regular (N+2) K hN2_le_K)
     have hx_reg := (abs_sub_le_iff).1 (by simpa using x_pre.is_regular (N+2) K hN2_le_K)
+    -- Upper / lower shifts
     have hy_ge : y_pre.approx K ≥ y_pre.approx (N+2) - 1/2^(N+2) := by
       have : y_pre.approx (N+2) - y_pre.approx K ≤ 1/2^(N+2) := by
         simpa [one_div] using hy_reg.left
@@ -3849,6 +3850,7 @@ theorem pseudo_order_property (x y z : CReal) (hxy : x < y) : x < z ∨ z < y :=
       have : x_pre.approx K - x_pre.approx (N+2) ≤ 1/2^(N+2) := by
         simpa [one_div] using hx_reg.right
       linarith
+    -- Lower bound on gap at K in terms of gap at N+2
     have h_yx :
         y_pre.approx K - x_pre.approx K ≥
           (y_pre.approx (N+2) - x_pre.approx (N+2)) - 2 / 2 ^ (N+2) := by
@@ -3857,36 +3859,49 @@ theorem pseudo_order_property (x y z : CReal) (hxy : x < y) : x < z ∨ z < y :=
             ≥ (y_pre.approx (N+2) - 1/2^(N+2)) - (x_pre.approx (N+2) + 1/2^(N+2)) :=
               sub_le_sub hy_ge hx_le
         _ = (y_pre.approx (N+2) - x_pre.approx (N+2)) - 2/2^(N+2) := by ring
+    -- Core gap lower bound from original witness hN
     have h_core :
         (y_pre.approx (N+2) - x_pre.approx (N+2)) - 2 / 2 ^ (N + 2)
           > 1 / 2 ^ (N + 1) := by
+      -- Base inequality from the hypothesis hN (index shift already expanded).
       have hyx : 1 / 2 ^ N < y_pre.approx (N+2) - x_pre.approx (N+2) := by
         simpa [sub_eq_add_neg, add_comm, add_left_comm, add_assoc] using hN
+      -- Express 1 / 2^N directly as the sum of two copies of 1 / 2^(N+1).
       have h_split : (1 : ℚ) / 2 ^ N = (1 : ℚ) / 2 ^ (N + 1) + (1 : ℚ) / 2 ^ (N + 1) := by
+        -- 1/2^N = 2/2^(N+1) and 2/2^(N+1) = (1/2^(N+1))+(1/2^(N+1))
         field_simp [pow_succ]; ring
+      -- Rewrite the left side of hyx via h_split to get a “double–half” gap.
       have h_big :
           (1 : ℚ) / 2 ^ (N + 1) + (1 : ℚ) / 2 ^ (N + 1)
             < y_pre.approx (N+2) - x_pre.approx (N+2) := by
         simpa [h_split]
           using hyx
+      -- Subtract one 1/2^(N+1) from both sides.
       have h_goal :
           (y_pre.approx (N+2) - x_pre.approx (N+2)) - (1 : ℚ) / 2 ^ (N + 1)
             > (1 : ℚ) / 2 ^ (N + 1) := by
         linarith
+      -- 2 / 2^(N+2) = 1 / 2^(N+1).
       have h_two : (2 : ℚ) / 2 ^ (N + 2) = (1 : ℚ) / 2 ^ (N + 1) := by
+        -- 2^(N+2) = 2^(N+1)*2
         simp [pow_succ, mul_comm]; ring_nf
+      -- Replace 2/2^(N+2) with 1/2^(N+1).
       simpa [h_two] using h_goal
+      
     have h_yx_strong :
         1 / 2 ^ (N + 1) < y_pre.approx K - x_pre.approx K :=
       lt_of_lt_of_le h_core h_yx
+    -- Half-gap lower bound
     have h_gap_half :
         1 / 2 ^ (N + 2) < (y_pre.approx K - x_pre.approx K)/2 := by
       have hpos : (0:ℚ) < (1:ℚ)/2 := by norm_num
       have := mul_lt_mul_of_pos_right h_yx_strong hpos
       simpa [one_div, pow_succ, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using this
+    -- Pass half-gap through midpoint inequality
     have h_final_at_K :
         1 / 2 ^ (N + 2) < z_pre.approx K - x_pre.approx K :=
       lt_trans h_gap_half h_diff_gt_half
+    -- Shift to index K+1
     have hz_pair :=
       (abs_sub_le_iff).1 (by simpa using z_pre.is_regular K (K+1) (Nat.le_succ _))
     have hx_pair :=
@@ -3907,46 +3922,62 @@ theorem pseudo_order_property (x y z : CReal) (hxy : x < y) : x < z ∨ z < y :=
             ≥ (z_pre.approx K - 1/2^K) - (x_pre.approx K + 1/2^K) :=
               sub_le_sub hz_lower hx_upper
         _ = z_pre.approx K - x_pre.approx K - 2/2^K := by ring
+    -- Express 2/2^K as 1/2^(N+3)
     have hK_expr : K = N + 4 := by simp [K,M]
     have h_two_over : (2:ℚ)/2^K = (1:ℚ)/2^(N+3) := by
       have : (2:ℚ)/2^(N+4) = (1:ℚ)/2^(N+3) := by
         field_simp [pow_succ]; ring
       simpa [hK_expr]
+    -- Subtract (2/2^K) from inequality at K
     have base_shift :
       1 / 2 ^ (N + 2) - 2 / 2 ^ K < z_pre.approx K - x_pre.approx K - 2 / 2 ^ K := by
       simpa [sub_eq_add_neg, add_comm, add_left_comm, add_assoc]
         using (sub_lt_sub_right h_final_at_K ((2:ℚ)/2^K))
+    -- Rewrite LHS to 1/2^(N+3) using the previously obtained h_two_over (ensure all literals are ℚ).
     have h_left_rewrite :
         (1 : ℚ) / 2 ^ (N + 2) - (2 : ℚ) / 2 ^ K = (1 : ℚ) / 2 ^ (N + 3) := by
+      -- coerce all numerals to ℚ
       have h2 : (2 : ℚ) / (2 : ℚ) ^ K = (1 : ℚ) / (2 : ℚ) ^ (N + 3) := h_two_over
+      -- (1/2^(N+2) - 1/2^(N+3)) = 1/2^(N+3)
       have h_sub : (1:ℚ)/2^(N+2) - (1:ℚ)/2^(N+3) = (1:ℚ)/2^(N+3) := by
         field_simp [one_div, pow_succ]; ring
       calc
         (1 : ℚ) / 2 ^ (N + 2) - (2 : ℚ) / 2 ^ K
             = (1 : ℚ) / 2 ^ (N + 2) - (1 : ℚ) / 2 ^ (N + 3) := by rw [h2]
         _ = (1 : ℚ) / 2 ^ (N + 3) := h_sub
+    -- Derive the needed shifted inequality directly from h_final_at_K (avoids fragile rewrites).
     have h_at_K1 :
         1 / 2 ^ (N + 3) < z_pre.approx K - x_pre.approx K - 2 / 2 ^ K := by
+      -- We want: 1/2^(N+3) < (gap) - 2/2^K; with 2/2^K = 1/2^(N+3),
+      -- it's equivalent to: 2*(1/2^(N+3)) < gap, i.e. 1/2^(N+2) < gap, which is h_final_at_K.
       have h_sum_halves :
           (1:ℚ)/2^(N+3) + (1:ℚ)/2^(N+3) = 1 / 2 ^ (N + 2) := by
         simpa [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using two_halves_to_succ (N + 1)
+      -- Rewrite the gap inequality into a + a < gap
       have h_gap' : (1:ℚ)/2^(N+3) + (1:ℚ)/2^(N+3) < z_pre.approx K - x_pre.approx K := by
+        -- We have: h_sum_halves : 1/2^(N+3) + 1/2^(N+3) = 1/2^(N+2)
+        -- and this : 1/2^(N+2) < z_pre.approx K - x_pre.approx K
         rw [h_sum_halves]
         simp_all only [one_div, lt_add_neg_iff_add_lt, tsub_le_iff_right, add_le_add_iff_right, le_add_iff_nonneg_right,
           zero_le, ge_iff_le, gt_iff_lt, sub_lt_sub_iff_right, K, M, m_K]
+      -- From a + a < G deduce a < G - a
       have h_goal :
           (1:ℚ)/2^(N+3) < z_pre.approx K - x_pre.approx K - 1/2^(N+3) := by
         have : (1:ℚ)/2^(N+3) + (1:ℚ)/2^(N+3) < z_pre.approx K - x_pre.approx K := h_gap'
         linarith
+      -- Replace 2/2^K with 1/2^(N+3) (h_two_over) in the target.
       simpa [h_two_over] using h_goal
+    -- Lift to K+1 using h_lower_shift
     have h_step :
         1 / 2 ^ (N + 3) < z_pre.approx (K+1) - x_pre.approx (K+1) :=
       lt_of_lt_of_le h_at_K1 h_lower_shift
+    -- Strengthen exponent to M (M = N+3 here)
     have h_step_stronger :
         1 / 2 ^ M < z_pre.approx (K+1) - x_pre.approx (K+1) := by
       have hM : M = N + 3 := rfl
       simpa [hM] using h_step
     refine ⟨M, ?_⟩
+    -- Expand (z - x) at index M+1
     have h_expand :
       (z_pre.add x_pre.neg).approx (M+1) =
         z_pre.approx (K+1) - x_pre.approx (K+1) := by
@@ -3956,7 +3987,7 @@ theorem pseudo_order_property (x y z : CReal) (hxy : x < y) : x < z ∨ z < y :=
     simpa [h_expand] using h_step_stronger
 
 -- A simp lemma to rewrite the limit representative at any index
-@[simp]
+@[simp] 
 lemma lim_pre_approx_simp (s : RCauSeq) (t : ℕ) :
   (lim_pre s).approx t = (s.pre (t + 2)).approx (t + 2) := rfl
 
@@ -4171,633 +4202,3 @@ theorem converges_to_lim (s : CReal.RCauSeq) (k : ℕ) :
   simpa [hseq, hlim, d, CReal.Pre.add, CReal.Pre.neg, sub_eq_add_neg] using h_abs
 
 end CReal
-
-namespace Computable
-
--- Functional Framework
-
-/-- A Gauge is a strictly positive rational number. (From Approach 2) -/
-structure Gauge where
-  val : ℚ
-  property : 0 < val
-deriving DecidableEq
-
-instance : Coe Gauge ℚ where
-  coe g := g.val
-
-lemma Gauge.pos (g : Gauge) : 0 < (g : ℚ) := g.property
-
-/-- Formalized Uniformly Continuous function on ℚ. (Enhanced Approach 2) -/
-structure UniformCtsQQ where
-  toFun : ℚ → ℚ
-  modulus : Gauge → Gauge
-  /-- The proof that the function adheres to the modulus. -/
-  uniform_continuity_proof : ∀ (ε : Gauge) (x y : ℚ),
-    |x - y| < (modulus ε : ℚ) → |toFun x - toFun y| < (ε : ℚ)
-
--- Lifting Mechanism
-
-/-- Helper function to find k such that 1/2^k < δ. -/
-def find_k (δ : Gauge) : ℕ :=
-  let h_exists : ∃ k : ℕ, 1/(δ:ℚ) < (2:ℚ)^k :=
-    exists_pow_gt (by rw [one_div_pos]; exact δ.pos)
-  Nat.find h_exists
-
-lemma find_k_bound (δ : Gauge) : (1:ℚ) / 2^(find_k δ) < (δ:ℚ) := by
-  rw [one_div_lt]
-  · exact Nat.find_spec (p := fun k => 1/(δ:ℚ) < (2:ℚ)^k) _
-  · positivity
-  · exact δ.pos
-
-/-- Helper function to find k such that 1/2^(k-1) < δ. Ensures k > 0. -/
-def find_k' (δ : Gauge) : ℕ :=
-  find_k δ + 1
-
-lemma find_k'_bound (δ : Gauge) : (1:ℚ) / 2^(find_k' δ - 1) < (δ:ℚ) := by
-  unfold find_k'
-  simpa [Nat.add_sub_cancel] using find_k_bound δ
-
-/--
-Lifts a uniformly continuous function on ℚ to a function on CReal.Pre.
-This implementation uses find_k' to ensure that the input precision is sufficient
-for both regularity and equivalence proofs.
--/
-def makeCRealFunPre (f : UniformCtsQQ) (x : CReal.Pre) : CReal.Pre where
-  approx := fun n =>
-    let ε : Gauge := ⟨(1:ℚ)/2^(n+1), by positivity⟩
-    let δ := f.modulus ε
-    let k := find_k' δ
-    f.toFun (x.approx k)
-  is_regular := by
-    intro n m hnm
-    let ε_n : Gauge := ⟨(1:ℚ)/2^(n+1), by positivity⟩
-    let ε_m : Gauge := ⟨(1:ℚ)/2^(m+1), by positivity⟩
-    let k_n := find_k' (f.modulus ε_n)
-    let k_m := find_k' (f.modulus ε_m)
-    let K := max k_n k_m
-    -- Term 1: |f(x_kn) - f(x_K)|. Bound < ε_n.
-    have h_term_1 : |f.toFun (x.approx k_n) - f.toFun (x.approx K)| < (ε_n:ℚ) := by
-      apply f.uniform_continuity_proof ε_n
-      calc
-        |x.approx k_n - x.approx K|
-          ≤ 1/2^k_n := x.is_regular k_n K (le_max_left _ _)
-        _ ≤ 1/2^(k_n-1) := by
-          have h_kn_pos : 0 < k_n := by dsimp [k_n, find_k']; exact Nat.succ_pos _
-          have hk : k_n = (k_n - 1) + 1 := (Nat.succ_pred_eq_of_pos h_kn_pos).symm
-          rw [hk]
-          exact inv_pow_antitone_succ (k_n - 1)
-        _ < (f.modulus ε_n : ℚ) := find_k'_bound (f.modulus ε_n)
-    -- Term 2: |f(x_K) - f(x_km)|. Bound < ε_m. (Symmetric argument)
-    have h_term_2 : |f.toFun (x.approx K) - f.toFun (x.approx k_m)| < (ε_m:ℚ) := by
-      apply f.uniform_continuity_proof ε_m
-      calc
-        |x.approx K - x.approx k_m|
-          ≤ 1/2^k_m := by
-            rw [abs_sub_comm]; exact x.is_regular k_m K (le_max_right _ _)
-        _ ≤ 1/2^(k_m-1) := by
-          have h_km_pos : 0 < k_m := by dsimp [k_m, find_k']; exact Nat.succ_pos _
-          have hk : k_m = (k_m - 1) + 1 := (Nat.succ_pred_eq_of_pos h_km_pos).symm
-          rw [hk]
-          exact inv_pow_antitone_succ (k_m - 1)
-        _ < (f.modulus ε_m : ℚ) := find_k'_bound (f.modulus ε_m)
-    have hlt :
-        |f.toFun (x.approx k_n) - f.toFun (x.approx k_m)| < 1 / 2 ^ n := by
-      calc
-        |f.toFun (x.approx k_n) - f.toFun (x.approx k_m)|
-            ≤ |f.toFun (x.approx k_n) - f.toFun (x.approx K)| +
-              |f.toFun (x.approx K) - f.toFun (x.approx k_m)| := by
-                apply abs_sub_le
-        _ < (ε_n:ℚ) + (ε_m:ℚ) := add_lt_add h_term_1 h_term_2
-        _ = 1/2^(n+1) + 1/2^(m+1) := rfl
-        _ ≤ 1/2^(n+1) + 1/2^(n+1) := by
-              gcongr
-              exact rfl
-        _ = 1/2^n := by
-              field_simp [pow_succ]; ring
-    exact hlt.le
-
-/--
-Proof that the lifting mechanism respects equivalence.
--/
-theorem makeCRealFunPre_respects_equiv (f : UniformCtsQQ) (x y : CReal.Pre) (hxy : CReal.Pre.Equiv x y) :
-  CReal.Pre.Equiv (makeCRealFunPre f x) (makeCRealFunPre f y) := by
-  intro n
-  -- We need to show |(makeCRealFunPre f x).approx (n+1) - (makeCRealFunPre f y).approx (n+1)| ≤ 1/2^n.
-  -- The approximations are calculated using ε' = 1/2^(n+2).
-  let ε' : Gauge := ⟨(1:ℚ)/2^(n+2), by positivity⟩
-  let δ' := f.modulus ε'
-  let k' := find_k' δ'
-  -- The approximations are f(x.approx k') and f(y.approx k').
-  have h_bound : |f.toFun (x.approx k') - f.toFun (y.approx k')| < (ε':ℚ) := by
-    apply f.uniform_continuity_proof ε'
-    have h_k'_pos : k' > 0 := by dsimp [k', find_k']; exact Nat.succ_pos _
-    have h_xy_k' : |x.approx k' - y.approx k'| ≤ 1/2^(k'-1) := by
-      simpa [Nat.sub_add_cancel h_k'_pos] using hxy (k' - 1)
-    calc
-      |x.approx k' - y.approx k'|
-        ≤ 1/2^(k'-1) := h_xy_k'
-      _ < (δ':ℚ) := find_k'_bound δ'
-  have hlt :
-      |(makeCRealFunPre f x).approx (n+1) - (makeCRealFunPre f y).approx (n+1)| < 1 / 2 ^ n := by
-    calc
-      |(makeCRealFunPre f x).approx (n+1) - (makeCRealFunPre f y).approx (n+1)|
-          = |f.toFun (x.approx k') - f.toFun (y.approx k')| := rfl
-      _ < (ε':ℚ) := h_bound
-      _ = 1/2^(n+2) := rfl
-      _ ≤ 1/2^n := by
-        have h1 := CReal.inv_pow_antitone_succ (n + 1)
-        have h2 := CReal.inv_pow_antitone_succ n
-        exact h1.trans h2
-  exact hlt.le
-
-/--
-Lifts a UniformCtsQQ function to CReal.
--/
-def makeCRealFun (f : UniformCtsQQ) : CReal → CReal :=
-  Quotient.lift (fun x_pre => ⟦makeCRealFunPre f x_pre⟧) (by
-    intro x y hxy
-    apply Quotient.sound
-    exact makeCRealFunPre_respects_equiv f x y hxy
-  )
-
-end Computable
-
--- 5. Integration Point: Elementary Functions (Based on Approach 2 Algorithms)
-
-/-!
-# Transcendental Functions
-
-We now integrate the algorithms from the "Few Digits" approach (Approach 2).
-This requires implementing the algorithms (Taylor series, argument reduction)
-to produce `CReal.Pre` sequences and proving their regularity based on rigorous error analysis.
--/
-
--- Prerequisite functions on ℚ (from Approach 2).
-
-/--
-Generate the list of factorials: [1, 1, 1*2, 1*2*3, ...].
-Returns the first `n` terms (from 0! to (n-1)!).
--/
-def factorials (n : ℕ) : List ℚ :=
-  let rec fact (acc i : ℚ) (k : ℕ) : List ℚ :=
-    if k = 0 then [] else acc :: fact (acc * i) (i + 1) (k - 1)
-  fact 1 1 n
-
-/--
-Generate the list of powers of a rational number x^0, x^1, ..., x^(n-1).
--/
-def powers (x : ℚ) (n : ℕ) : List ℚ :=
-  List.zipWith (fun _ k => x ^ k) (List.range n) (List.range n)
-
-/-! ### Exponential Function (exp) -/
-
-/--
-Helper: the truncation height N(n) used for the Taylor approximation of `exp`.
-We take a very simple choice: N(n) = n + 2.
--/
-@[inline] def expTruncLevel (n : ℕ) : ℕ := n + 2
-
-/-- The k-th Taylor coefficient for exp at x (as a rational). -/
-@[inline] def expCoeff (x : ℚ) (k : ℕ) : ℚ :=
-  x^k / (Nat.factorial k)
-
-/-- Partial sum up to (inclusive) height `N`. -/
-def expPartial (x : ℚ) (N : ℕ) : ℚ :=
-  (Finset.range (N + 1)).sum (fun k => expCoeff x k)
-
-/-- Simple factorial lower bound: for all k we have (k+1)! ≥ 2^k. -/
-lemma two_pow_le_factorial_succ (k : ℕ) :
-    (2 : ℕ) ^ k ≤ Nat.factorial (k + 1) := by
-  -- Strong induction on k
-  induction k with
-  | zero =>
-      simp
-  | succ k ih =>
-      have hkpos : 2 ≤ k + 2 := by exact Nat.succ_le_succ (Nat.succ_le_succ (Nat.zero_le k))
-      have : (2 : ℕ)^(k+1) = 2 * 2^k := by
-        simp [pow_succ, Nat.mul_comm]
-      calc
-        (2 : ℕ) ^ (k + 1)
-            = 2 * 2^k := this
-        _ ≤ (k+2) * 2^k := by
-              apply Nat.mul_le_mul_right
-              exact hkpos
-        _ ≤ (k+2) * Nat.factorial (k+1) := by
-              exact Nat.mul_le_mul_left _ ih
-        _ = Nat.factorial (k+2) := by
-              simp [Nat.factorial_succ]
-
-/-- Factorial inequality in ℚ form. -/
-lemma two_pow_le_factorial_succ_q (k : ℕ) :
-  (2 : ℚ) ^ k ≤ (Nat.factorial (k+1) : ℚ) := by
-  exact_mod_cast two_pow_le_factorial_succ k
-
-/--
-Monotonic ratio bound for successive absolute Taylor terms:
-If |x| ≤ 1/2 then
-|x^{k+1} / (k+1)!| ≤ (1/2) * |x^k / k!|.
--/
-lemma exp_term_ratio (x : ℚ) (hx : |x| ≤ (1/2 : ℚ)) (k : ℕ) :
-  |x^(k+1) / (Nat.factorial (k+1))| ≤ ( (1:ℚ) / 2 ) * |x^k / (Nat.factorial k)| := by
-  have hkpos : 0 < (k+1 : ℚ) := by exact_mod_cast Nat.succ_pos k
-  have hfacpos : 0 < (Nat.factorial k : ℚ) := by exact_mod_cast Nat.factorial_pos k
-  have hsuccfacpos : 0 < (Nat.factorial (k+1) : ℚ) := by exact_mod_cast Nat.factorial_pos (k+1)
-  have h_fact : (Nat.factorial (k+1) : ℚ) = (k+1 : ℚ) * Nat.factorial k := by
-    norm_cast
-  have h_main :
-      |x^(k+1) / (Nat.factorial (k+1))|
-        = (|x| / (k+1 : ℚ)) * (|x^k| / Nat.factorial k) := by
-    have : x^(k+1) = x^k * x := by
-      simp [pow_succ, mul_comm]
-    calc
-      |x^(k+1) / (Nat.factorial (k+1))|
-          = |x^(k+1)| / (Nat.factorial (k+1) : ℚ) := by
-                simp [abs_div, abs_of_pos hsuccfacpos]
-      _ = |x^k * x| / ((k+1:ℚ) * Nat.factorial k) := by
-                simp [this, h_fact]
-      _ = (|x^k| * |x|) / ((k+1:ℚ) * Nat.factorial k) := by
-                simp [abs_mul, mul_comm]
-      _ = (|x| * |x^k|) / ((k+1:ℚ) * Nat.factorial k) := by
-                ac_rfl
-      _ = (|x| / (k+1:ℚ)) * (|x^k| / Nat.factorial k) := by
-                field_simp [div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc]
-  have hk_ge_one : (1 : ℚ) ≤ (k+1 : ℚ) := by exact_mod_cast Nat.succ_le_succ (Nat.zero_le k)
-  have h_inv_le_one : (1 : ℚ) / (k+1 : ℚ) ≤ 1 := (div_le_one₀ hkpos).mpr hk_ge_one
-  have h_abs_nonneg : 0 ≤ |x| := abs_nonneg _
-  have h_div_le_abs : |x| / (k+1 : ℚ) ≤ |x| := by
-    simpa [div_eq_mul_inv, mul_comm] using
-      mul_le_mul_of_nonneg_left h_inv_le_one h_abs_nonneg
-  have h_div_le_half : |x| / (k+1 : ℚ) ≤ (1/2 : ℚ) := h_div_le_abs.trans hx
-  have h_nonneg_right : 0 ≤ |x^k| / (Nat.factorial k : ℚ) :=
-    div_nonneg (abs_nonneg _) (le_of_lt hfacpos)
-  have h_mul :
-      (|x| / (k+1 : ℚ)) * (|x^k| / Nat.factorial k)
-        ≤ (1/2 : ℚ) * (|x^k| / Nat.factorial k) :=
-    mul_le_mul_of_nonneg_right h_div_le_half h_nonneg_right
-  have h_abs_div :
-      |x^k / (Nat.factorial k : ℚ)| = |x^k| / Nat.factorial k := by
-    simp [abs_div, abs_of_pos hfacpos]
-  calc
-    |x^(k+1) / (Nat.factorial (k+1))|
-        = (|x| / (k+1 : ℚ)) * (|x^k| / Nat.factorial k) := h_main
-    _ ≤ (1/2 : ℚ) * (|x^k| / Nat.factorial k) := h_mul
-    _ = (1/2 : ℚ) * |x^k / (Nat.factorial k)| := by simp [h_abs_div]
-    _ = ((1:ℚ)/2) * |x^k / (Nat.factorial k)| := rfl
-
-@[simp] private lemma abs_pow (x : ℚ) (n : ℕ) : |x^n| = |x|^n := by
-  induction n with
-  | zero => simp
-  | succ n ih => simp [pow_succ, ih, abs_mul, mul_comm]
-
--- Closed form of the geometric sum
-lemma geom_closed (u : ℕ) :
-    (Finset.range u).sum (fun j => (1/2 : ℚ)^j)
-      = 2 - 2 * (1/2 : ℚ)^u := by
-  induction u with
-  | zero =>
-      simp
-  | succ u ih =>
-      have : (Finset.range (u + 1)).sum (fun j => (1/2 : ℚ)^j)
-            = (Finset.range u).sum (fun j => (1/2 : ℚ)^j) + (1/2 : ℚ)^u := by
-        simp [Finset.sum_range_succ, add_comm]
-      calc
-        (Finset.range (u + 1)).sum (fun j => (1/2 : ℚ)^j)
-            = (Finset.range u).sum (fun j => (1/2 : ℚ)^j) + (1/2 : ℚ)^u := this
-        _ = (2 - 2 * (1/2 : ℚ)^u) + (1/2 : ℚ)^u := by rw [ih]
-        _ = 2 - (2 * (1/2 : ℚ)^u - (1/2 : ℚ)^u) := by ring_nf
-        _ = 2 - ((2 - 1) * (1/2 : ℚ)^u) := by ring
-        _ = 2 - (1/2 : ℚ)^u := by norm_num
-        _ = 2 - 2 * (1/2 : ℚ)^(u+1) := by
-            simp [pow_succ, mul_comm]
-
-lemma exp_tail_le_geom (x : ℚ) (hx : |x| ≤ (1/2 : ℚ))
-  (N M : ℕ) (hNM : N ≤ M) :
-  |(Finset.range (M + 1)).sum (fun k => expCoeff x k) -
-    (Finset.range (N + 1)).sum (fun k => expCoeff x k)| ≤
-    2 * |x^(N+1) / (Nat.factorial (N+1))| := by
-  let a : ℕ → ℚ := fun k => expCoeff x k
-  set t := M - N
-  have hM : M = N + t := (Nat.add_sub_of_le hNM).symm
-  have hM_succ : M + 1 = N + t + 1 := by
-    simp [hM, Nat.add_assoc]
-  have tail_split :
-      (Finset.range (M + 1)).sum a - (Finset.range (N + 1)).sum a
-        = (Finset.range t).sum (fun j => a (N + 1 + j)) := by
-    have aux :
-        ∀ t, (Finset.range (N + t + 1)).sum a - (Finset.range (N + 1)).sum a
-            = (Finset.range t).sum (fun j => a (N + 1 + j)) := by
-      intro t'
-      induction t' with
-      | zero =>
-          simp
-      | succ t' ih =>
-          have : (Finset.range (N + (t' + 1) + 1)).sum a
-                = (Finset.range (N + t' + 1)).sum a + a (N + t' + 1) := by
-            simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc]
-              using Finset.sum_range_succ (fun k => a k) (N + t' + 1)
-          calc
-            (Finset.range (N + (t'+1) + 1)).sum a - (Finset.range (N + 1)).sum a
-                = ((Finset.range (N + t' + 1)).sum a + a (N + t' + 1))
-                    - (Finset.range (N + 1)).sum a := by
-                  simpa [Nat.succ_eq_add_one, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using this
-            _ = ((Finset.range (N + t' + 1)).sum a - (Finset.range (N + 1)).sum a)
-                  + a (N + t' + 1) := by ring
-            _ = (Finset.range t').sum (fun j => a (N + 1 + j)) + a (N + t' + 1) := by
-                  simpa using congrArg id ih
-            _ = (Finset.range (t' + 1)).sum (fun j => a (N + 1 + j)) := by
-                  simp [Finset.sum_range_succ, add_comm, add_left_comm, add_assoc]
-    have := aux t
-    simpa [hM_succ]
-  have ratio : ∀ k, |a (k+1)| ≤ (1/2 : ℚ) * |a k| := by
-    intro k; simpa [a] using exp_term_ratio x hx k
-  -- Geometric domination of successive tail terms
-  have geom_dom :
-      ∀ j, |a (N + 1 + j)| ≤ (1/2 : ℚ)^j * |a (N + 1)| := by
-    intro j
-    induction j with
-    | zero => simp
-    | succ j ih =>
-        have rstep : |a (N + 1 + (j + 1))| ≤ (1/2 : ℚ) * |a (N + 1 + j)| := by
-          have : (N + 1 + j) + 1 = N + 1 + (j + 1) := by
-            simp [Nat.add_comm, Nat.add_left_comm]
-          simpa [this] using ratio (N + 1 + j)
-        calc
-          |a (N + 1 + (j + 1))| ≤ (1/2 : ℚ) * |a (N + 1 + j)| := rstep
-          _ ≤ (1/2 : ℚ) * ((1/2 : ℚ)^j * |a (N + 1)|) :=
-                mul_le_mul_of_nonneg_left ih (by norm_num)
-          _ = (1/2 : ℚ)^(j+1) * |a (N + 1)| := by
-                simp [pow_succ, mul_comm, mul_assoc]
-  have h_abs_tail :
-      |(Finset.range t).sum (fun j => a (N + 1 + j))|
-        ≤ (Finset.range t).sum (fun j => |a (N + 1 + j)|) :=
-    Finset.abs_sum_le_sum_abs _ _
-  have h_sum_bound_pointwise :
-      (Finset.range t).sum (fun j => |a (N + 1 + j)|)
-        ≤ (Finset.range t).sum (fun j => (1/2 : ℚ)^j * |a (N + 1)|) := by
-    refine Finset.sum_le_sum ?_
-    intro j _
-    have := geom_dom j
-    simpa [mul_comm, mul_left_comm, mul_assoc]
-  have h_factor :
-      (Finset.range t).sum (fun j => (1/2 : ℚ)^j * |a (N + 1)|)
-        = |a (N + 1)| * (Finset.range t).sum (fun j => (1/2 : ℚ)^j) := by
-    simp [Finset.mul_sum, mul_comm]
-  have geom_sum_le_two :
-      (Finset.range t).sum (fun j => (1/2 : ℚ)^j) ≤ 2 := by
-    have hcf := geom_closed t
-    have hpow_nonneg : 0 ≤ (1/2 : ℚ)^t := by positivity
-    have hterm_nonneg : 0 ≤ 2 * (1/2 : ℚ)^t := Rat.mul_nonneg rfl hpow_nonneg --mul_nonneg (by norm_num) hpow_nonneg
-    have : 2 - 2 * (1/2 : ℚ)^t ≤ 2 := by
-      have : 2 - 2 * (1/2 : ℚ)^t ≤ 2 - 0 := by
-        gcongr
-      simp
-    simp_all
-  have tail_bound :
-      |(Finset.range t).sum (fun j => a (N + 1 + j))|
-        ≤ |a (N + 1)| * (Finset.range t).sum (fun j => (1/2 : ℚ)^j) := by
-    have h_chain := h_abs_tail.trans h_sum_bound_pointwise
-    have h_factor' :
-        (Finset.range t).sum (fun j => (1/2 : ℚ)^j * |a (N + 1)|)
-          = |a (N + 1)| * (Finset.range t).sum (fun j => (1/2 : ℚ)^j) := by
-      rw [Finset.mul_sum]
-      congr 1
-      ext j
-      ring
-    calc |(Finset.range t).sum (fun j => a (N + 1 + j))|
-        ≤ (Finset.range t).sum (fun j => |a (N + 1 + j)|) := h_abs_tail
-      _ ≤ (Finset.range t).sum (fun j => (1/2 : ℚ)^j * |a (N + 1)|) := h_sum_bound_pointwise
-      _ = |a (N + 1)| * (Finset.range t).sum (fun j => (1/2 : ℚ)^j) := h_factor'
-  have : |(Finset.range (M + 1)).sum a - (Finset.range (N + 1)).sum a|
-        ≤ 2 * |a (N + 1)| := by
-    have h_tail_rewrite :
-        |(Finset.range (M + 1)).sum a - (Finset.range (N + 1)).sum a|
-          = |(Finset.range t).sum (fun j => a (N + 1 + j))| := by
-      simp [tail_split]
-    have hgeom : |a (N + 1)| * (Finset.range t).sum (fun j => (1/2 : ℚ)^j) ≤ |a (N + 1)| * 2 :=
-      mul_le_mul_of_nonneg_left geom_sum_le_two (abs_nonneg (a (N + 1)))
-    calc
-      |(Finset.range (M + 1)).sum a - (Finset.range (N + 1)).sum a|
-          = |(Finset.range t).sum (fun j => a (N + 1 + j))| := h_tail_rewrite
-      _ ≤ |a (N + 1)| * (Finset.range t).sum (fun j => (1/2 : ℚ)^j) := tail_bound
-      _ ≤ |a (N + 1)| * 2 := by
-            simpa [two_mul, mul_comm, mul_left_comm, mul_assoc]
-              using hgeom
-      _ = 2 * |a (N + 1)| := by ring
-  simpa [a, expCoeff]
-
-/--
-Tail bound between truncations N(n)=n+2 and N(m)=m+2:
-|expPartial x (n+2) - expPartial x (m+2)| ≤ 1 / 2^n (for n ≤ m, |x| ≤ 1/2).
--/
-lemma exp_tail_bound_core (x : ℚ) (hx : |x| ≤ (1/2 : ℚ)) (n m : ℕ)
-  (hnm : n ≤ m) :
-  |expPartial x (expTruncLevel m) - expPartial x (expTruncLevel n)| ≤ (1 : ℚ) / 2^n := by
-  -- Abbreviations
-  set Nn := expTruncLevel n        -- = n + 2
-  set Nm := expTruncLevel m
-  have hN : Nn ≤ Nm := by
-    dsimp [Nn, Nm, expTruncLevel]; exact add_le_add_right hnm 2
-  -- Geometric tail (already proved)
-  have hgeom := exp_tail_le_geom x hx Nn Nm hN
-  -- (1/2)^k = 1 / 2^k
-  have half_pow : ∀ k, (1/2 : ℚ)^k = (1 : ℚ) / 2^k := by
-    intro k; induction k with
-    | zero => simp
-    | succ k ih => simp [pow_succ, one_div]; ring_nf
-  -- Bound |x|^k ≤ (1/2)^k
-  have pow_abs_bound : ∀ k, |x|^k ≤ (1/2 : ℚ)^k := by
-    intro k; induction k with
-    | zero => simp
-    | succ k ih =>
-      calc
-        |x|^(k+1) = |x|^k * |x| := by simp [pow_succ]
-        _ ≤ (1/2 : ℚ)^k * |x| := mul_le_mul_of_nonneg_right ih (abs_nonneg _)
-        _ ≤ (1/2 : ℚ)^k * (1/2 : ℚ) := mul_le_mul_of_nonneg_left hx (by positivity)
-        _ = (1/2 : ℚ)^(k+1) := by simp [pow_succ]
-  -- |x^(Nn+1)| = |x|^(Nn+1)
-  have h_abs_pow : |x^(Nn+1)| = |x|^(Nn+1) := by
-    simp
-  -- Factorial lower bound 2^Nn ≤ (Nn+1)!
-  have hfac_nat : (2 : ℕ)^Nn ≤ Nat.factorial (Nn+1) := two_pow_le_factorial_succ Nn
-  have hfac_q : (2 : ℚ)^Nn ≤ (Nat.factorial (Nn+1) : ℚ) := by exact_mod_cast hfac_nat
-  have hfac_pos : 0 < (Nat.factorial (Nn+1) : ℚ) := by exact_mod_cast Nat.factorial_pos (Nn+1)
-  -- Core (Nn+1)-th term bound
-  have core_term :
-      |x^(Nn+1) / (Nat.factorial (Nn+1))|
-        ≤ (1/2 : ℚ)^(Nn+1) / (2:ℚ)^Nn := by
-    have num_le : |x^(Nn+1)| ≤ (1/2 : ℚ)^(Nn+1) := by
-      simpa [h_abs_pow] using pow_abs_bound (Nn+1)
-    have : |x^(Nn+1) / (Nat.factorial (Nn+1) : ℚ)|
-            = |x^(Nn+1)| / (Nat.factorial (Nn+1) : ℚ) := by
-      simp [abs_div, abs_of_pos hfac_pos]
-    have hinv :
-        (Nat.factorial (Nn+1) : ℚ)⁻¹ ≤ ((2:ℚ)^Nn)⁻¹ := by
-      have hpow_pos : 0 < (2:ℚ)^Nn := pow_pos (by norm_num) _
-      exact inv_anti₀ hpow_pos hfac_q-- inv_le_inv_of_le hpow_pos hfac_q
-    calc
-      |x^(Nn+1) / (Nat.factorial (Nn+1))|
-          = |x^(Nn+1)| / (Nat.factorial (Nn+1) : ℚ) := this
-      _ = |x^(Nn+1)| * ((Nat.factorial (Nn+1):ℚ)⁻¹) := by simp [div_eq_mul_inv]
-      _ ≤ (1/2 : ℚ)^(Nn+1) * ((Nat.factorial (Nn+1):ℚ)⁻¹) :=
-            mul_le_mul_of_nonneg_right num_le (by positivity)
-      _ ≤ (1/2 : ℚ)^(Nn+1) * ((2:ℚ)^Nn)⁻¹ :=
-            mul_le_mul_of_nonneg_left hinv (by positivity)
-      _ = (1/2 : ℚ)^(Nn+1) / (2:ℚ)^Nn := by simp [div_eq_mul_inv]
-  -- Simplify RHS
-  have simpl :
-      (1/2 : ℚ)^(Nn+1) / (2:ℚ)^Nn = (1 : ℚ) / 2^(2*Nn + 1) := by
-    have h1 : (1/2 : ℚ)^(Nn+1) = (1 : ℚ) / 2^(Nn+1) := half_pow (Nn+1)
-    calc
-      (1/2 : ℚ)^(Nn+1) / (2:ℚ)^Nn
-          = ((1:ℚ)/2^(Nn+1)) / 2^Nn := by simp
-      _ = (1:ℚ) / (2^(Nn+1) * 2^Nn) := by simp [div_eq_mul_inv]; ring_nf
-      _ = (1:ℚ) / 2^((Nn+1)+Nn) := by simp [pow_add]
-      _ = (1:ℚ) / 2^(2*Nn + 1) := by ring_nf
-  have core_term' :
-      |x^(Nn+1) / (Nat.factorial (Nn+1))| ≤ (1 : ℚ) / 2^(2*Nn + 1) := by
-    rw [simpl] at core_term
-    exact core_term
-  -- 2 * |term| ≤ 1 / 2^(2*Nn)
-  have two_mul_term :
-      2 * |x^(Nn+1) / (Nat.factorial (Nn+1))|
-        ≤ (1 : ℚ) / 2^(2*Nn) := by
-    have hsplit :
-        (1:ℚ)/2^(2*Nn + 1) = ((1:ℚ)/2^(2*Nn)) * (1/2 : ℚ) := by
-      -- 1 / 2^(k+1) = (1 / 2^k) * (1/2)
-      simp [pow_succ, one_div, mul_comm]
-    have : 2 * ((1:ℚ)/2^(2*Nn + 1)) = (1:ℚ) / 2^(2*Nn) := by
-      -- 2 * (1 / 2^(k+1)) = 1 / 2^k
-      have : (2:ℚ) * (1 / 2^(2*Nn + 1)) = (1:ℚ) / 2^(2*Nn) := by
-        simp [pow_succ, one_div, mul_comm]
-      simpa [two_mul, one_div, hsplit, mul_comm, mul_left_comm, mul_assoc]
-    calc
-      2 * |x^(Nn+1) / (Nat.factorial (Nn+1))|
-          ≤ 2 * ((1:ℚ)/2^(2*Nn + 1)) :=
-            mul_le_mul_of_nonneg_left core_term' (by norm_num)
-      _ = (1:ℚ) / 2^(2*Nn) := this
-  -- Combine geometric tail bound and factorial/power bound
-  have diff_bound :
-      |expPartial x Nm - expPartial x Nn| ≤ (1 : ℚ) / 2^(2*Nn) :=
-    hgeom.trans two_mul_term
-  -- Show n ≤ 2*Nn (since Nn = n+2 ⇒ 2*Nn = 2n+4)
-  have n_le_2Nn : n ≤ 2 * Nn := by
-    dsimp [Nn, expTruncLevel]
-    -- Need: n ≤ 2*(n+2) = 2n+4
-    have h1 : n ≤ n + n := Nat.le_add_right _ _
-    have h2 : n + n ≤ n + n + 4 := Nat.le_add_right _ _
-    have : n ≤ n + n + 4 := Nat.le_trans h1 h2
-    simp [two_mul, add_comm, add_left_comm]
-  -- Monotonicity of inverse powers: if a ≤ b then 1/2^b ≤ 1/2^a
-  have one_div_pow_mono :
-      ∀ {a b : ℕ}, a ≤ b → (1:ℚ)/2^b ≤ (1:ℚ)/2^a := by
-    intro a b h
-    have hpow : (2:ℚ)^a ≤ (2:ℚ)^b :=
-      (pow_le_pow_iff_right₀ (by norm_num)).mpr h
-    have hpos : 0 < (2:ℚ)^a := pow_pos (by norm_num) _
-    exact one_div_le_one_div_of_le hpos hpow
-  have final_step : (1:ℚ)/2^(2*Nn) ≤ (1:ℚ) / 2^n :=
-    one_div_pow_mono n_le_2Nn
-  exact diff_bound.trans final_step
-
-/--
-Final definition: pre-real for exp(x) when |x| ≤ 1/2, with regularity.
-We use the Taylor polynomial up to degree N(n) = n + 2 at index n.
--/
-def small_exp (x : ℚ) (hx : |x| ≤ (1/2 : ℚ)) : CReal.Pre :=
-{ approx := fun n => expPartial x (expTruncLevel n)
-  , is_regular := by
-      intro n m hnm
-      -- Use the tail bound lemma, applying abs_sub_comm to match the required order
-      have h := exp_tail_bound_core x hx n m hnm
-      simpa [one_div, abs_sub_comm] using h
-}
-
-/-- Cast the partial exponential sum to ℝ. -/
-def expPartialR (x : ℚ) (N : ℕ) : ℝ := (expPartial x N : ℚ)
-
-open Filter Topology
-
-/-
-/-- Remainder estimate to the true real exponential (fixed). -/
-lemma exp_series_tail_bound
-  (x : ℚ) (hx : |x| ≤ (1/2 : ℚ)) :
-  ∀ n, |Real.exp (x : ℝ) - expPartialR x (n + 2)| ≤ (1 : ℝ) / 2^n := by sorry
-
--- Note: small_exp.approx n = expPartial x (n+2), so the previous lemma gives the desired real remainder bound.
-
- /-- Convergence: `small_exp` approximants converge to `Real.exp x`. -/
-lemma small_exp_converges_to_real
-  (x : ℚ) (hx : |x| ≤ (1/2 : ℚ)) :
-  ∀ ε > (0:ℝ), ∃ N, ∀ n ≥ N,
-    |(small_exp x hx).approx n - (Real.exp (x:ℝ))| < ε := by sorry
-
-/-- Representation equality: `small_exp` represents `Real.exp x`. -/
-theorem small_exp_represents_exp (x : ℚ) (hx : |x| ≤ (1/2 : ℚ)) :
-  (⟦small_exp x hx⟧ : CReal) = (⟦small_exp x hx⟧ : CReal) := by
-  rfl
-  -/
-
-
-/-
-/--
-`CReal.Pre` representation of exp(x) for a rational x such that |x| ≤ 1/2.
-Adapts `rationalSmallExp` from Approach 2.
--/
-def small_exp (x : ℚ) (hx : |x| ≤ 1/2) : CReal.Pre := {
-  approx := fun n =>
-    -- SOTA Requirement: Constructively determine the number of terms K(n) needed
-    -- such that the Taylor remainder R_K(x) < 1/2^n.
-    -- Bound for |x| <= 1/2: R_K(x) ≤ 2 * |x|^(K+1) / (K+1)!.
-
-    -- Placeholder: A constructive search algorithm for K(n) must be implemented here.
-    let K := 20 -- Placeholder value.
-
-    -- Calculation mirroring the Taylor approximation in Approach 2.
-    let terms := List.zipWith (fun num den => num / den) (powers x (K+1)) (factorials (K+1))
-    terms.sum
-  is_regular := by
-    -- Rigorous proof required, utilizing the Taylor remainder bounds and the constructive K(n).
-    sorry
-}
--/
-
-#eval (small_exp (1/4 : ℚ) (by norm_num)).approx 5  -- Example evaluation
-#eval (small_exp (-1/3 : ℚ) (by norm_num)).approx 5  -- Example evaluation
-
-
-end Pre
-end CReal
-end Computable
-
-/-! ### Trigonometric Functions and Pi -/
-
--- Strategy adapts `rationalSmallArcTan` and `scalePi` from Approach 2.
-
-/-
-/--
-`CReal.Pre` representation of arctan(x) for a small rational x.
--/
-def small_arctan (x : ℚ) (hx : |x| ≤ 1/2) : Pre := {
-  approx := fun n =>
-    -- Use alternating series remainder bound. Need |x|^(2K+1) / (2K+1) < 1/2^n.
-    let K := 20 -- Placeholder: A computable K(n) is required.
-    let terms := List.range (K + 1) |>.map (fun k =>
-      let sign := if k % 2 = 0 then 1 else -1
-      let n : ℕ := 2 * k + 1
-      (sign : ℚ) * x ^ (n : ℕ) / (n : ℚ))
-    terms.sum
-  is_regular := by
-    sorry
-}
--/
-
--- Pi can be defined using Machin-like formulas (as in Approach 2), utilizing `small_arctan`,
--- scalar multiplication (which is derived from `Pre.mul`), and addition on `CReal.Pre`.
--- Example definition (requires defining scalar multiplication first):
--- def pi : CReal.Pre := ... (Implementation of 4 * arctan(1/5) - arctan(1/239) or similar)
-
--- Sin and Cos are implemented similarly, using Taylor series and argument reduction via Pi.
-
---end Pre
---end CReal
---end Computable

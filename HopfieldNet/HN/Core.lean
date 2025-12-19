@@ -9,6 +9,7 @@ import Mathlib.Data.Vector.Defs
 import Init.Data.Vector.Lemmas
 import HopfieldNet.NN
 import HopfieldNet.HN.aux
+import Mathlib.Tactic
 
 open Finset Matrix NeuralNetwork State
 
@@ -419,11 +420,13 @@ theorem energy_lt_zero_or_pluses_increase (hc : (s.Up wθ u).act u ≠ s.act u) 
     (s.Up wθ u).E wθ < s.E wθ ∨ ((s.Up wθ u).E wθ = s.E wθ ∧ s.pluses < (s.Up wθ u).pluses) :=
 (lt_or_eq_of_le (energy_diff_leq_zero wθ hc)).elim Or.inl (fun hr => Or.inr (by
   constructor; assumption; rw [← sub_eq_zero, E_final_Form, mul_eq_zero] at hr
-  cases' hr with h1 h2
-  · rw [sub_eq_zero] at h1; apply sum_lt_sum;
+  cases hr --with h1 h2
+  · rename_i h1
+    rw [sub_eq_zero] at h1; apply sum_lt_sum;
     · simp_all only [ne_eq, not_true_eq_false]
     · simp_all only [ne_eq, not_true_eq_false]
-  · rw [sub_eq_zero] at h2
+  · rename_i h2
+    rw [sub_eq_zero] at h2
     have hactUp := act_new_neg_one_if_net_eq_th wθ h2
     have hactu := act_eq_neg_one_if_up_act_eq_one_and_net_eq_th wθ hc h2 hactUp
     apply sum_lt_sum
@@ -468,7 +471,8 @@ def NeuralNetwork.stateToNeurActMap_equiv' :
   toFun := stateToNeurActMap
   invFun := fun f =>
    { act := fun u => f u, hp := fun u => by
-      simp only; cases' f u with val hval; simp only
+      simp only;
+      cases f u ;simp only
       simp_all only [mem_insert, mem_singleton]}
   left_inv := congrFun rfl
   right_inv := congrFun rfl
@@ -957,7 +961,7 @@ lemma patterns_general (ps : Fin m → (HopfieldNetwork R U).State) (j : Fin m) 
   ((Hebbian ps).w).mulVec (ps j).act =
     (card U - m : R) • (ps j).act + disturbance ps j := by
   unfold Hebbian
-  simp only [ne_eq, ite_not]
+  simp only
   ext t
   rw [mulVec, dotProduct]
   unfold disturbance
