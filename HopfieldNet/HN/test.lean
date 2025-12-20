@@ -33,7 +33,7 @@ def test : NeuralNetwork ℚ (Fin 3) where
      revert x
      decide
   Uh := ∅
-  hUi := Ne.symm (Set.ne_insert_of_not_mem {1} fun a ↦ a)
+  hUi := Ne.symm (Set.ne_insert_of_notMem {1} fun a ↦ a)
   hUo := Set.singleton_ne_empty 2
   hhio := by
     simp only [Fin.isValue, Set.union_singleton, Set.empty_inter]
@@ -219,8 +219,7 @@ It converts the patterns `ps` into a network using Hebbian learning if possible.
 If not, it defaults to `ZeroParams_4`.
 --/
 def test_params : Params (HopfieldNetwork ℚ (Fin 4)) :=
-  match (patternsOfVecs ps (by simp only [Nat.succ_eq_add_one, zero_add,
-    Nat.reduceAdd, Nat.reduceLT])) with
+  match (patternsOfVecs ps (by simp only [Nat.reduceLT])) with
   | some patterns => Hebbian patterns
   | none => ZeroParams_4
 
