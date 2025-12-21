@@ -1,55 +1,15 @@
 /-
-Copyright (c) 2024 Michail Karatarakis. All rights reserved.
+Copyright (c) 2025 Michail Karatarakis. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Michail Karatarakis
 -/
-import Mathlib.Combinatorics.Digraph.Basic
-import Mathlib.Data.Matrix.Basic
-import Mathlib.Data.Vector.Basic
 import Mathlib.Combinatorics.Quiver.Basic
+import Mathlib.Data.Finset.Basic
+import Mathlib.Analysis.Normed.Field.Lemmas
+import Mathlib.LinearAlgebra.Matrix.Defs
+import Mathlib.Data.List.Pairwise
 
-open Mathlib Finset
-
-/-
-A `NeuralNetwork` models a neural network with:
-
-- `R`: Type for weights and activations.
-- `U`: Type for neurons.
-- `[Zero R]`: `R` has a zero element.
-
-It extends `Digraph U` and includes the network's architecture, activation functions, and constraints.
--/
-structure NeuralNetwork' (R U : Type) [Zero R] extends Digraph U where
-  /-- Input neurons. -/
-  (Ui Uo Uh : Set U)
-  /-- There is at least one input neuron. -/
-  (hUi : Ui ≠ ∅)
-  /-- There is at least one output neuron. -/
-  (hUo : Uo ≠ ∅)
-  /-- All neurons are either input, output, or hidden. -/
-  (hU : Set.univ = (Ui ∪ Uo ∪ Uh))
-  /-- Hidden neurons are not input or output neurons. -/
-  (hhio : Uh ∩ (Ui ∪ Uo) = ∅)
-  /-- Dimensions of input vectors for each neuron. -/
-  (κ1 κ2 : U → ℕ)
-  /-- Computes the net input to a neuron. -/
-  (fnet : ∀ u : U, (U → R) → (U → R) → Vector R (κ1 u) → R)
-  /-- Computes the activation of a neuron. -/
-  (fact : ∀ u : U, R → R → Vector R (κ2 u) → R) -- R_current_activation, R_net_input, params
-  /-- Computes the final output of a neuron. -/
-  (fout : ∀ _ : U, R → R)
-  /-- Predicate on activations. -/
-  (pact : R → Prop)
-  /-- Predicate on weight matrices. -/
-  (pw : Matrix U U R → Prop)
-  /-- If all activations satisfy `pact`, then the activations computed by `fact` also satisfy `pact`. -/
-  (hpact : ∀ (w : Matrix U U R) (_ : ∀ u v, ¬ Adj u v → w u v = 0) (_ : pw w)
-   (σ : (u : U) → Vector R (κ1 u)) (θ : (u : U) → Vector R (κ2 u)) (current_neuron_activations : U → R),
-  (∀ u_idx : U, pact (current_neuron_activations u_idx)) → -- Precondition on all current activations
-  (∀ u_target : U, pact (fact u_target (current_neuron_activations u_target) -- Pass current_act of target neuron
-                               (fnet u_target (w u_target)
-                               (fun v => fout v (current_neuron_activations v)) (σ u_target))
-                               (θ u_target))))
+open Mathlib
 
 universe u
 
@@ -73,14 +33,14 @@ structure NeuralNetwork (R U : Type u) [Zero R] extends Quiver.{u+1} U where
                                (fnet u_target (fun v => fout v (current_neuron_activations v)) (σ u_target))
                                (θ u_target))))
 
-variable {R U : Type} [Zero R] [Quiver U]
+variable {R U : Type} [Zero R]
 
 /--
 `Params` is a structure that holds the external parameters for a given
 neural network `NN`, along with a proof that the network's internal
 parameters (its arrows) satisfy the required predicate `NN.pw`.
 -/
-structure Params [Quiver U] (NN : NeuralNetwork R U) where
+structure Params (NN : NeuralNetwork R U) where
   /-- A proof that all arrows in the neural network satisfy its parameter predicate `pw`. -/
   (h_arrows : ∀ u v (f : NN.Hom u v), NN.pw u v f)
   /-- External parameters for the `fnet` function (e.g., biases). -/
