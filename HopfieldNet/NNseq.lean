@@ -28,9 +28,9 @@ variable [Zero R ] {NN : NeuralNetwork R U}
   and arrows only exist between adjacent layers (i -> i+1).
   -- This structure is the exact mathematical object needed to bridge the gap:
 
---     Isabelle's View: A neural net is implicitly this structure (a sequence of operations).
+--      A neural net is implicitly this structure (a sequence of operations).
 
---     Your View: A neural net is a Quiver.
+--     A neural net is a Quiver.
 
 --     The Bridge: This structure LayeredStructure identifies
 -- the subset of Quivers that behave like Isabelle networks.
@@ -50,9 +50,8 @@ structure LayeredStructure (NN : NeuralNetwork R U) [DecidableEq U] [Fintype U] 
     ∃ (i : ℕ), u ∈ layers.getD i ∅ ∧ v ∈ layers.getD (i + 1) ∅
 
 
-
 /--
-  The "Simultaneous" update used in sequential models (like the Isabelle paper).
+  The Simultaneous update used in sequential models (like the Isabelle paper).
   It calculates the new state for *all* neurons in 'layer' based on the
   *snapshot* of the previous state 's'.
   Crucially, it does NOT see updates happening to other neurons in the same layer.
@@ -117,104 +116,15 @@ lemma workPhase_stable_of_not_mem (NN : NeuralNetwork R U) (wθ : Params NN) [  
 --   LEMMA: Intra-Layer Independence (Proven)
 --   If a set of neurons 'layer' has no internal edges, sequential updates equal simultaneous updates.
 -- -/
--- lemma workPhase_eq_simultaneous_of_independent
---     (NN : NeuralNetwork R U) (wθ : Params NN) (s : NN.State) (layer : Finset U) [DecidableEq U]
---     (hs : s.onlyUi)
---     -- REQUIRED: The network must respect locality (fnet depends only on neighbors)
---     (h_local : Locality NN wθ)
---     -- Hypothesis: No edges between nodes inside this layer
---     (h_independent : ∀ u v, u ∈ layer → v ∈ layer → (Nonempty (NN.Hom u v) → False)) :
-
---     State.workPhase wθ s hs layer.toList =
---     simultaneous_layer_update NN wθ s layer :=
--- by
-
---   unfold simultaneous_layer_update
-
---   -- We split the proof into two cases: x is in the layer, or x is not.
---   by_cases hx_layer : x ∈ layer
---   · -- CASE 1: x is in the layer.
---     simp only [hx_layer, if_true]
-
---     -- We need to look at the list of updates: [u1, u2, ... x, ... un]
---     let L := layer.toList
---     have hx_list : x ∈ L := Finset.mem_toList.mpr hx_layer
---     have h_nodup : L.Nodup := Finset.nodup_toList layer
-
---     -- Decompose the list L into `pre ++ [x] ++ post`
---     rcases List.take_drop_get_mem L hx_list with ⟨pre, post, h_decomp⟩
-
---     -- We rewrite the workPhase fold over this decomposition
---     rw [h_decomp, State.workPhase]
---     simp only [List.foldl_append, List.foldl_cons, List.foldl_nil]
-
---     -- Let s_pre be the state after processing `pre`
---     let s_pre := List.foldl (fun s_iter u_iter => s_iter.Up wθ u_iter) s (pre)
-
---     -- Step 1: Updates in `post` do NOT affect x
---     -- Because `L` has no duplicates, x is not in `post`.
---     have h_x_not_in_post : x ∉ post := by
---       rw [h_decomp] at h_nodup
---       simp only [List.nodup_append, List.nodup_cons] at h_nodup
---       tauto
---     -- Therefore, we can ignore the `post` part for x
---     rw [workPhase_stable_of_not_mem NN wθ (s_pre.Up wθ x) _ post x h_x_not_in_post]
-
---     -- Step 2: Calculate the update at x
---     -- (s_pre.Up x).act x is the new value we want.
---     unfold State.Up
---     simp only [if_true]
-
---     -- Step 3: Show that inputs to x are identical in `s` and `s_pre`
---     -- The update formula uses `fnet`. We use h_local to prove `fnet` inputs match.
---     congr 1 -- Match the arguments of `fact`
---     congr 1 -- Match the arguments of `fnet`
---     apply h_local
---     intros v h_neighbor
-
---     -- Crucial Logic:
---     -- Is v in `pre`?
---     -- If v is in `pre`, then v is in `layer` (since pre ⊆ L ⊆ layer).
---     -- But x is also in `layer`.
---     -- `h_independent` says x cannot have a neighbor v in `layer`.
---     -- Therefore, v CANNOT be in `pre`.
---     by_cases hv_in_pre : v ∈ pre
---     · -- Contradiction case
---       have hv_layer : v ∈ layer := by
---         rw [← Finset.mem_toList, h_decomp]
---         apply List.mem_append_of_mem_left
---         apply List.mem_append_of_mem_left
---         exact hv_in_pre
---       exfalso
---       exact h_independent x v hx_layer hv_layer h_neighbor
-
---     · -- Normal case: v is not in pre.
---       -- If v is not in `pre`, then workPhase over `pre` did not change v.
---       -- (Assuming v is not x either, which is true as no self-loops usually,
---       -- or just by h_independent logic: if v=x, x in layer, neighbor to self -> False)
---       -- Actually simpler: workPhase_stable_of_not_mem handles this.
---       -- We assume onlyUi proof holds through steps (omitted for brevity in type check)
---       have h_dummy : s.onlyUi := hs -- Prop passing placeholder
-
---       -- Need to show s_pre.out v = s.out v
---       -- s_pre.out v depends on s_pre.act v
---       unfold State.out
---       congr 1
---       -- s_pre is workPhase on `pre`. v is not in `pre`.
---       -- But wait, `workPhase` expects `State`, logic holds directly.
---       let s_pre_cast : NN.State := s_pre -- Type alignment
---       have : s_pre.act v = s.act v := by
---         -- Use the helper lemma on the partial fold
---         -- (Need to cast the fold back to workPhase definition conceptually)
---         exact workPhase_stable_of_not_mem NN wθ s hs pre v hv_in_pre
---       exact this
-
---   · -- CASE 2: x is NOT in the layer.
---     simp only [hx_layer, if_false]
---     -- LHS: x is not in layer.toList
---     have hx_not_list : x ∉ layer.toList := Finset.mem_toList.not.mpr hx_layer
---     -- Apply helper lemma
---     apply workPhase_stable_of_not_mem NN wθ s hs layer.toList x hx_not_list
+lemma workPhase_eq_simultaneous_of_independent
+    (NN : NeuralNetwork R U) (wθ : Params NN) (s : NN.State) (layer : Finset U) [DecidableEq U]
+    (hs : s.onlyUi)
+    -- REQUIRED: The network must respect locality (fnet depends only on neighbors)
+    (h_local : Locality NN wθ)
+    -- Hypothesis: No edges between nodes inside this layer
+    (h_independent : ∀ u v, u ∈ layer → v ∈ layer → (Nonempty (NN.Hom u v) → False)) :
+    State.workPhase wθ s hs layer.toList =
+    simultaneous_layer_update NN wθ s layer := by sorry
 
 /--
   Inference in the Isabelle model:
@@ -224,34 +134,8 @@ def sequential_inference (NN : NeuralNetwork R U) [DecidableEq U] [Fintype U] (w
     (ls : LayeredStructure NN) (s0 : NN.State) : NN.State :=
   ls.layers.foldl (fun s layer => simultaneous_layer_update NN wθ s layer) s0
 
-/--
-  LEMMA: Intra-Layer Independence
-  If a set of neurons 'layer' has no internal edges (no u -> v where both in layer),
-  then the order of updates within that layer implies NO dependency.
-  Therefore, the asynchronous 'workPhase' is identical to the 'simultaneous_update'.
--/
-lemma workPhase_eq_simultaneous_of_independent
-    (NN : NeuralNetwork R U) [DecidableEq U] (wθ : Params NN) (s : NN.State) (layer : Finset U)
-    (hs : s.onlyUi)
-    -- Hypothesis: No edges between nodes inside this layer
-    (h_independent : ∀ u v, u ∈ layer → v ∈ layer → (Nonempty (NN.Hom u v) → False)) :
-
-    State.workPhase wθ s hs layer.toList =
-    simultaneous_layer_update NN wθ s layer :=
-by
-  -- The proof strategy (informal for the paper/thesis):
-  -- 1. In 'workPhase', we update u1, then u2...
-  -- 2. When updating u2, it looks at the network state.
-  -- 3. The only neuron that has changed is u1.
-  -- 4. But h_independent says u1 does NOT connect to u2.
-  -- 5. Therefore, u2 sees the same input values as if u1 hadn't updated.
-  -- 6. Thus, every neuron effectively sees 's' (the old state).
-  sorry -- (Standard induction on the list elements)
-
 #exit
-/--
-  Helper to flatten the layers into a single schedule list
--/
+/-- Helper to flatten the layers into a single schedule list -/
 noncomputable def full_schedule {NN : NeuralNetwork R U} [Fintype U] [DecidableEq U]
    (ls : LayeredStructure NN) : List U :=
   ls.layers.flatMap (Finset.toList)
