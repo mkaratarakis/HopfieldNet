@@ -276,7 +276,7 @@ lemma Ew_update_formula_split : s.Ew wθ = (- ∑ v2 ∈ {v2 | v2 ≠ u}, s.Wact
     have sum_v1_v2_not_eq_v1_eq_u :
         ∑ v1, (∑ v2 ∈ {v2 | v2 ≠ v1 ∧ v1 = u}, s.Wact wθ v1 v2) = ∑ v2 ∈ {v2 | v2 ≠ u}, s.Wact wθ u v2 := by
       rw [Fintype.sum_eq_single u]; simp only [and_true];
-      intro v1 hv1; simp_all only [and_false, filter_False, sum_empty]
+      intro v1 hv1; simp_all only [and_false, Finset.filter_false, sum_empty]
     rw [sum_v1_v2_not_eq_v1_eq_u]
 
     have sum_v1_v2_not_eq_v1_eq_u' :
@@ -289,7 +289,7 @@ lemma Ew_update_formula_split : s.Ew wθ = (- ∑ v2 ∈ {v2 | v2 ≠ u}, s.Wact
             intro a; subst a; simp_all only [not_true_eq_false]
           · intro hv1 _ a; simp_all only [mem_univ, and_false, reduceIte]
           · intro a; simp_all only [mem_univ, not_true_eq_false]
-        · simp_all only [Decidable.not_not, not_and_self, filter_False, sum_empty]
+        · simp_all only [Decidable.not_not, not_and_self, Finset.filter_false, sum_empty]
       simp_rw [sum_Wact_v1_u, ite_not, mem_filter, mem_univ, true_and];
       split; next h => exact (if_neg fun hv1u => hv1u h).symm; ; exact Wact_sym wθ v1 u
 

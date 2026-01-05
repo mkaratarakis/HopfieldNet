@@ -44,7 +44,7 @@ def test : NeuralNetwork ℚ (Fin 3) := {
 
   -- E. Computation Functions
   -- 'fnet' calculates the weighted sum. We access 'test.M' directly here.
-  fnet := fun u preds _ => ∑ v, (test.M u v) * preds v
+  fnet := fun u preds _ _ => ∑ v, (test.M u v) * preds v
 
   fact := fun u input θ => if input ≥ θ then 1 else 0
   fout := fun u act => act
