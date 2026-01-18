@@ -51,4 +51,3 @@ def probability? (β : FastReal) (E : ι → FastReal) (i : ι) : ℕ → Option
 
 end FastFiniteEval
 end NeuralNetwork
-
