@@ -2,7 +2,7 @@ import Mathlib.Algebra.EuclideanDomain.Field
 import Mathlib.Data.Complex.Exponential
 import Mathlib.LinearAlgebra.Matrix.Symmetric
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
-import NeuralNetwork.NeuralNetwork
+import NeuralNetwork.NeuralNetwork.NeuralNetwork
 import PhysLean.Thermodynamics.Temperature.Basic
 
 set_option linter.unusedSectionVars false

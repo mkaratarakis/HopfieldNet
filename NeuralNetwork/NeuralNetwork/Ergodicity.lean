@@ -1,5 +1,5 @@
-import Mathematics.LinearAlgebra.Matrix.PerronFrobenius.Stochastic
-import NeuralNetwork.DetailedBalanceBM
+import MCMC.PF.LinearAlgebra.Matrix.PerronFrobenius.Stochastic
+import NeuralNetwork.NeuralNetwork.DetailedBalanceBM
 
 set_option linter.unusedSectionVars false
 set_option linter.unusedSimpArgs false

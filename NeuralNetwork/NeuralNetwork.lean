@@ -21,6 +21,8 @@ import NeuralNetwork.Core
 import NeuralNetwork.DetailedBalanceBM
 import NeuralNetwork.Ergodicity
 import NeuralNetwork.toCanonicalEnsemble
+import NeuralNetwork.NeuralNetwork.ComputableRealsBridge
+import NeuralNetwork.NeuralNetwork.FastFiniteEval
 import NeuralNetwork.test
 import NeuralNetwork.TSAux
 import NeuralNetwork.TwoState

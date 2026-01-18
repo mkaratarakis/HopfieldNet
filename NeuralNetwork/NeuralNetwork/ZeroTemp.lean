@@ -2,8 +2,8 @@ import Mathlib.Analysis.SpecialFunctions.Exp
 import Mathlib.LinearAlgebra.Matrix.Symmetric
 import Mathlib.RingTheory.LocalRing.Basic
 import Mathlib.Topology.GDelta.MetrizableSpace
-import NeuralNetwork.TwoState
-import NeuralNetwork.TSAux
+import NeuralNetwork.NeuralNetwork.TwoState
+import NeuralNetwork.NeuralNetwork.TSAux
 import PhysLean.Thermodynamics.Temperature.Basic
 
 set_option linter.unusedSectionVars false

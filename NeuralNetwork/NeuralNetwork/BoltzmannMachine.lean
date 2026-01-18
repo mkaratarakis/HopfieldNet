@@ -1,7 +1,7 @@
-import NeuralNetwork.TwoState
-import NeuralNetwork.TSAux
-import NeuralNetwork.toCanonicalEnsemble
-import Mathematics.Probability.DetailedBalanceGen
+import NeuralNetwork.NeuralNetwork.TwoState
+import NeuralNetwork.NeuralNetwork.TSAux
+import NeuralNetwork.NeuralNetwork.toCanonicalEnsemble
+import NeuralNetwork.Mathematics.Probability.DetailedBalanceGen
 import Mathlib.Probability.Kernel.Composition.Prod
 import PhysLean.StatisticalMechanics.CanonicalEnsemble.Finite
 

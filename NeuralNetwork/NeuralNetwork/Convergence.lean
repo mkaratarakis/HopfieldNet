@@ -4,8 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Matteo Cipollina, Michail Karatarakis
 -/
 
-import NeuralNetwork.BoltzmannMachine
-import NeuralNetwork.aux
+import NeuralNetwork.NeuralNetwork.BoltzmannMachine
+import NeuralNetwork.NeuralNetwork.aux
 
 set_option linter.unusedSectionVars false
 set_option linter.unusedSimpArgs false

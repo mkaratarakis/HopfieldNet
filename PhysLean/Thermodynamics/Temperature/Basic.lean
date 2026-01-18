@@ -6,7 +6,7 @@ Authors: Matteo Cipollina, Joseph Tooby-Smith
 import Mathlib.Analysis.Calculus.Deriv.Inv
 import Mathlib.Analysis.InnerProductSpace.Basic
 import PhysLean.StatisticalMechanics.BoltzmannConstant
-import PhysLean.Meta.TODO.Basic
+
 /-!
 
 # Temperature

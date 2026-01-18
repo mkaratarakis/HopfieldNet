@@ -18,6 +18,13 @@ lean_lib «HopfieldNet» where
 lean_lib MCMC where
   -- Builds the `MCMC.*` modules living under the top-level `MCMC/` directory.
 
+lean_lib «NeuralNetwork» where
+  -- Builds the `NeuralNetwork.*` modules living under the top-level `NeuralNetwork/` directory.
+
+lean_lib Optlib where
+
+lean_lib PhysLean where
+
 require checkdecls from git "https://github.com/PatrickMassot/checkdecls.git"
 
 --meta if get_config? env = some "dev" then

@@ -14,13 +14,7 @@ variable {α : Type*} [MeasurableSpace α]
 
 namespace ProbabilityTheory.Kernel
 
-/--
-Reversibility (detailed balance) of a Markov kernel `κ` w.r.t. a (σ-finite) measure `π`:
-for all measurable sets `A B`, the mass flowing from `A` to `B` equals that from `B` to `A`.
--/
-def IsReversible (κ : Kernel α α) (π : Measure α) : Prop :=
-  ∀ ⦃A B⦄, MeasurableSet A → MeasurableSet B →
-    ∫⁻ x in A, κ x B ∂π = ∫⁻ x in B, κ x A ∂π
+
 
 /--
 A reversible Markov kernel leaves the measure `π` invariant.

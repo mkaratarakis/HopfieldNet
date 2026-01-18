@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Matteo Cipollina, Joseph Tooby-Smith
 -/
 import PhysLean.StatisticalMechanics.CanonicalEnsemble.Finite
-import PhysLean.Meta.Informal.Basic
+--import PhysLean.Meta.Informal.Basic
 /-!
 
 # Two-state canonical ensemble

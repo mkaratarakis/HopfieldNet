@@ -1,4 +1,4 @@
-import NeuralNetwork.Core
+import NeuralNetwork.NeuralNetwork.Core
 
 set_option linter.unusedVariables false
 set_option maxHeartbeats 500000

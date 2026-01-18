@@ -1,5 +1,5 @@
 import PhysLean.StatisticalMechanics.CanonicalEnsemble.Finite
-import NeuralNetwork.TwoState
+import NeuralNetwork.NeuralNetwork.TwoState
 
 set_option linter.unusedSectionVars false
 set_option linter.unusedSimpArgs false

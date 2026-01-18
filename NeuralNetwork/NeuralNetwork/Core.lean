@@ -1,9 +1,10 @@
-import NeuralNetwork.aux
-import NeuralNetwork.NeuralNetwork
+import NeuralNetwork.NeuralNetwork.aux
+import NeuralNetwork.NeuralNetwork.NeuralNetwork
 import Mathlib.LinearAlgebra.Matrix.Symmetric
 import Mathlib.Data.Matrix.Reflection
 import Mathlib.Data.Vector.Defs
 import Init.Data.Vector.Lemmas
+import Mathlib.Tactic
 
 set_option linter.style.multiGoal false
 set_option linter.style.cases false

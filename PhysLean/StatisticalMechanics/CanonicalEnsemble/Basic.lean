@@ -4,12 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Matteo Cipollina, Joseph Tooby-Smith
 -/
 import PhysLean.Thermodynamics.Temperature.Basic
-import Mathlib.MeasureTheory.Measure.ProbabilityMeasure
-import Mathlib.Analysis.Calculus.ParametricIntegral
-import PhysLean.Meta.Informal.SemiFormal
-import PhysLean.Meta.Linters.Sorry
-import Mathlib.Analysis.SpecialFunctions.Log.Summable
-import Mathlib.MeasureTheory.Integral.Prod
+import Mathlib
 /-!
 # Canonical Ensemble: Core Definitions
 

@@ -1,6 +1,6 @@
 import Mathlib.MeasureTheory.Constructions.Polish.Basic
 import Mathlib.Probability.Distributions.Uniform
-import NeuralNetwork.BoltzmannMachine
+import NeuralNetwork.NeuralNetwork.BoltzmannMachine
 
 set_option linter.unusedSectionVars false
 set_option linter.unusedSimpArgs false
