@@ -3,7 +3,7 @@ import HopfieldNet.CReals.CRealsFast
 open Computable.Fast
 
 namespace Computable.Fast.Examples
-
+set_option autoImplicit false
 /-!
 This file is intentionally “executable-first”: it exists to demonstrate that the
 `Computable.Fast` API works with `#eval` and `decide`.
