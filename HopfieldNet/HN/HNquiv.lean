@@ -7,7 +7,7 @@ import Mathlib.LinearAlgebra.Matrix.Symmetric
 import Mathlib.Data.Matrix.Reflection
 import Mathlib.Data.Vector.Defs
 import Init.Data.Vector.Lemmas
-import HopfieldNet.NN
+import HopfieldNet.NNquiv
 import HopfieldNet.HN.aux
 import Mathlib.Tactic
 
@@ -49,7 +49,7 @@ abbrev HNfout (act : R) : R := act
 abbrev HopfieldNetwork (R U : Type) [Field R] [LinearOrder R] [IsStrictOrderedRing R] [DecidableEq U]
    [Nonempty U] [Fintype U] : NeuralNetwork R U where
   /- The adjacency relation between neurons `u` and `v`, defined as `u ≠ v`. -/
-  Adj u v := u ≠ v
+  Hom u v := PLift (u ≠ v)
   /- The set of input neurons, defined as the universal set. -/
   Ui := Set.univ
   /- The set of output neurons, defined as the universal set. -/
@@ -64,8 +64,8 @@ abbrev HopfieldNetwork (R U : Type) [Field R] [LinearOrder R] [IsStrictOrderedRi
   hUi := Ne.symm Set.empty_ne_univ
   /- A proof that the output set is not equal to the empty set. -/
   hUo := Ne.symm Set.empty_ne_univ
-  /- A property that the weight matrix `w` is symmetric. -/
-  pw w := w.IsSymm
+  /- A trivial per-neuron predicate required by `NeuralNetwork` (symmetry is enforced in `Params.hw'`). -/
+  pw _ _ _ := True
   /- κ₁ is 0 for every neuron. -/
   κ1 _ := 0
   /- κ₂ is 1 for every neuron. -/
@@ -80,8 +80,9 @@ abbrev HopfieldNetwork (R U : Type) [Field R] [LinearOrder R] [IsStrictOrderedRi
   pact act := act = 1 ∨ act = -1
   /- A proof that the activation state of neuron `u`
     is determined by the threshold `θ` and the network function. -/
-  hpact w _ _ _ θ act _ u :=
-    ite_eq_or_eq ((θ u).get 0 ≤ HNfnet u (w u) fun v => HNfout (act v)) 1 (-1)
+  hpact w σ θ act _ u := by
+    apply ite_eq_or_eq
+     --((θ u).get 0 ≤ HNfnet u (w u) fun v => HNfout (act v)) 1 (-1)
 
 
 variable [Nonempty U]
@@ -91,11 +92,11 @@ In a Hopfield network, two neurons are adjacent if and only if they are differen
 This formalizes the fully connected nature of Hopfield networks.
 -/
 lemma HopfieldNetwork.all_nodes_adjacent (u v : U) :
-    ¬(HopfieldNetwork R U).Adj u v → u = v := by
+    ¬ Nonempty ((HopfieldNetwork R U).Hom u v) → u = v := by
   intro h
-  unfold HopfieldNetwork at h
-  simp only [ne_eq] at h
-  simp_all only [Decidable.not_not]
+  by_contra huv
+  apply h
+  exact ⟨⟨huv⟩⟩
 
 /-- In a Hopfield network, activation values can only be 1 or -1. -/
 lemma hopfield_value_dichotomy
@@ -129,12 +130,22 @@ variable {s : (HopfieldNetwork R U).State}
 
 lemma NeuralNetwork.State.act_one_or_neg_one (u : U) : s.act u = 1 ∨ s.act u = -1 := s.hp u
 
-/-- Instances o establish decidability of equality for network states
+/-- Instances to establish decidability of equality for network states
   under certain conditions. -/
 instance decidableEqState :
   DecidableEq ((HopfieldNetwork R U).State) := by
   intro s₁ s₂
-  apply decidable_of_iff (∀ u, s₁.act u = s₂.act u) ⟨fun h ↦ ext h, fun h u ↦ by rw [h]⟩
+  cases' s₁ with act₁ hp₁
+  cases' s₂ with act₂ hp₂
+  by_cases hact : act₁ = act₂
+  · subst hact
+    have hhp : hp₁ = hp₂ := Subsingleton.elim _ _
+    subst hhp
+    exact isTrue rfl
+  · refine isFalse ?_
+    intro h
+    apply hact
+    exact congrArg act h
 
 /--
 Defines the Hebbian learning rule for a Hopfield Network.
@@ -150,24 +161,27 @@ def Hebbian {m : ℕ} (ps : Fin m → (HopfieldNetwork R U).State) : Params (Hop
   θ u := ⟨#[0], rfl⟩
   /- The state function, which is set to an empty vector. -/
   σ _ := Vector.emptyWithCapacity 0
+  h_arrows := by
+    intros u v f
+    trivial
   /- A proof that the weight matrix is symmetric and satisfies the Hebbian learning rule. -/
-  hw u v huv := by
-    simp only [sub_apply, smul_apply, smul_eq_mul]
-    rw [Finset.sum_apply, Finset.sum_apply]
-    have : ∀ k i, (ps k).act i * (ps k).act i = 1 := by
-      intros k i ; rw [mul_self_eq_one_iff.mpr]; exact act_one_or_neg_one i
-    unfold HopfieldNetwork at huv
-    simp only [ne_eq, Decidable.not_not] at huv
-    rw [huv]
-    conv => enter [1, 1, 2];
-    simp only [this, sum_const, card_univ, Fintype.card_fin, nsmul_eq_mul, mul_one, one_apply_eq,
-      sub_self]
+  -- hw u v huv := by
+  --   simp only [sub_apply, smul_apply, smul_eq_mul]
+  --   rw [Finset.sum_apply, Finset.sum_apply]
+  --   have : ∀ k i, (ps k).act i * (ps k).act i = 1 := by
+  --     intros k i ; rw [mul_self_eq_one_iff.mpr]; exact act_one_or_neg_one i
+  --   unfold HopfieldNetwork at huv
+  --   simp only [ne_eq, Decidable.not_not] at huv
+  --   rw [huv]
+  --   conv => enter [1, 1, 2];
+  --   simp only [this, sum_const, card_univ, Fintype.card_fin, nsmul_eq_mul, mul_one, one_apply_eq,
+  --     sub_self]
   /- A proof that the weight matrix is symmetric. -/
-  hw' := by
-    simp only [Matrix.IsSymm,transpose_sub, transpose_smul, transpose_one, sub_left_inj]
-    rw [isSymm_sum]
-    intro k
-    refine IsSymm.ext_iff.mpr (fun i j => CommMonoid.mul_comm ((ps k).act j) ((ps k).act i))
+  -- hw' := by
+  --   simp only [Matrix.IsSymm,transpose_sub, transpose_smul, transpose_one, sub_left_inj]
+  --   rw [isSymm_sum]
+  --   intro k
+  --   refine IsSymm.ext_iff.mpr (fun i j => CommMonoid.mul_comm ((ps k).act j) ((ps k).act i))
 
 variable (wθ : Params (HopfieldNetwork R U))
 
@@ -248,8 +262,10 @@ def NeuralNetwork.State.E (s : (HopfieldNetwork R U).State) : R := s.Ew wθ + s.
 lemma Wact_sym (v1 v2 : U) : s.Wact wθ v1 v2 = s.Wact wθ v2 v1 := by
   by_cases h : v1 = v2;
   · simp_rw [mul_comm, h]
-  · simp_rw [mul_comm, congrFun (congrFun (id (wθ.hw').symm) v1) v2]
-    exact mul_left_comm (s.act v2) (s.act v1) (wθ.w v2 v1)
+  · dsimp [Wact];
+
+    simp_rw [mul_comm, congrFun (congrFun (id (wθ.hw').symm) v1) v2]
+    --exact mul_left_comm (s.act v2) (s.act v1) (wθ.w v2 v1)
 
 @[simp]
 lemma Ew_update_formula_split : s.Ew wθ = (- ∑ v2 ∈ {v2 | v2 ≠ u}, s.Wact wθ v2 u) +
@@ -276,7 +292,7 @@ lemma Ew_update_formula_split : s.Ew wθ = (- ∑ v2 ∈ {v2 | v2 ≠ u}, s.Wact
     have sum_v1_v2_not_eq_v1_eq_u :
         ∑ v1, (∑ v2 ∈ {v2 | v2 ≠ v1 ∧ v1 = u}, s.Wact wθ v1 v2) = ∑ v2 ∈ {v2 | v2 ≠ u}, s.Wact wθ u v2 := by
       rw [Fintype.sum_eq_single u]; simp only [and_true];
-      intro v1 hv1; simp_all only [and_false, Finset.filter_false, sum_empty]
+      intro v1 hv1; simp_all only [and_false, filter_False, sum_empty]
     rw [sum_v1_v2_not_eq_v1_eq_u]
 
     have sum_v1_v2_not_eq_v1_eq_u' :
@@ -289,7 +305,7 @@ lemma Ew_update_formula_split : s.Ew wθ = (- ∑ v2 ∈ {v2 | v2 ≠ u}, s.Wact
             intro a; subst a; simp_all only [not_true_eq_false]
           · intro hv1 _ a; simp_all only [mem_univ, and_false, reduceIte]
           · intro a; simp_all only [mem_univ, not_true_eq_false]
-        · simp_all only [Decidable.not_not, not_and_self, Finset.filter_false, sum_empty]
+        · simp_all only [Decidable.not_not, not_and_self, filter_False, sum_empty]
       simp_rw [sum_Wact_v1_u, ite_not, mem_filter, mem_univ, true_and];
       split; next h => exact (if_neg fun hv1u => hv1u h).symm; ; exact Wact_sym wθ v1 u
 
@@ -932,7 +948,6 @@ lemma Hebbian_stable (hm : m < card U) (ps : Fin m → (HopfieldNetwork R U).Sta
     simpa only [sub_pos, Nat.cast_lt]
   apply stateisStablecondition ps (ps j) (card U - m) hmn0
   · intros u; rw [funext_iff] at this; exact this u
-
 
 lemma dotProduct_act_self (s : (HopfieldNetwork R U).State) :
   dotProduct s.act s.act = card U := by

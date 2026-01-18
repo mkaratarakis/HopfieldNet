@@ -1,3 +1,5 @@
+import Mathlib
+
 -- (* Copyright © 1998-2008
 --  * Henk Barendregt
 --  * Luís Cruz-Filipe
@@ -62,8 +64,17 @@
 -- * Ordered Fields
 -- ** Definition of the notion of ordered field
 -- *)
+--variable [Field F] [LinearOrder F] [IsStrictOrderedRing F]
 
 -- (* Begin_SpecReals *)
+
+-- Record strictorder (A : Type)(R : A -> A -> CProp) : CProp :=
+--  {so_trans : Ctransitive R;
+--   so_asym  : antisymmetric R}.
+
+structure StrictOrder (A : Type) (R : A → A → Prop) : Prop where
+  so_trans : ∀ {x y z : A}, R x y → R y z → R x z
+  so_asym : ∀ {x y : A}, R x y → ¬R y x
 
 -- Record strictorder (A : Type)(R : A -> A -> CProp) : CProp :=
 --  {so_trans : Ctransitive R;
@@ -85,6 +96,17 @@
 --    def_greater : forall x y, Iff (greater x y) (less y x);
 --    def_grEq : forall x y, (grEq x y) <-> (leEq y x)}.
 
+structure IsOrderedField (F : Type) [Field F] [LinearOrder F] [IsStrictOrderedRing F]
+  (less : F → F → Prop) (leEq : F → F → Prop)
+  (greater : F → F → Prop) (grEq : F → F → Prop) : Prop where
+  ax_less_strorder : StrictOrder F less
+  ax_plus_resp_less : ∀ x y z : F, less x y → less (x + z) (y + z)
+  ax_mult_resp_pos : ∀ x y : F, less 0 x → less 0 y → less 0 (x * y)
+  ax_less_conf_ap : ∀ x y : F, (x ≠ y) ↔ (less x y ∨ less y x)
+  def_leEq : ∀ x y : F, leEq x y ↔ ¬less y x
+  def_greater : ∀ x y : F, greater x y ↔ less y x
+  def_grEq : ∀ x y : F, grEq x y ↔ leEq y x
+
 -- Record COrdField : Type :=
 --   {cof_crr   :> CField;
 --    cof_less  :  CCSetoid_relation cof_crr;
@@ -92,6 +114,17 @@
 --    cof_greater :  CCSetoid_relation cof_crr;
 --    cof_grEq : cof_crr -> cof_crr -> Prop;
 --    cof_proof :  is_COrdField cof_crr cof_less cof_leEq cof_greater cof_grEq}.
+
+structure COrdField where
+  cof_crr : Type
+  [field_inst : Field cof_crr]
+  [order_inst : LinearOrder cof_crr]
+  [strict_order_inst : IsStrictOrderedRing cof_crr]
+  cof_less : cof_crr → cof_crr → Prop
+  cof_leEq : cof_crr → cof_crr → Prop
+  cof_greater : cof_crr → cof_crr → Prop
+  cof_grEq : cof_crr → cof_crr → Prop
+  cof_proof : IsOrderedField cof_crr cof_less cof_leEq cof_greater cof_grEq
 
 -- (**
 -- %\begin{nameconvention}%
@@ -112,6 +145,12 @@
 -- Arguments cof_grEq {c}.
 -- Infix "[>=]" := cof_grEq (at level 70, no associativity).
 
+-- Notations for ordered field relations
+notation:70 x:70 " [<] " y:71 => COrdField.cof_less x y
+notation:70 x:70 " [>] " y:71 => COrdField.cof_greater x y
+notation:70 x:70 " [<=] " y:71 => COrdField.cof_leEq x y
+notation:70 x:70 " [>=] " y:71 => COrdField.cof_grEq x y
+
 -- Definition default_greater (X:CField) (lt:CCSetoid_relation X) : CCSetoid_relation X.
 -- Proof.
 --  intros.
@@ -124,17 +163,29 @@
 --  tauto.
 -- Defined.
 
--- Definition default_leEq (X:CField) (lt:CCSetoid_relation X) : Relation X :=
--- (fun x y => (Not (lt y x))).
+def default_greater (X : Type) [Field X] (lt : X → X → Prop) : X → X → Prop :=
+  fun x y => lt y x
+
+def default_leEq (X : Type) [Field X] (lt : X → X → Prop) : X → X → Prop :=
+  fun x y => ¬(lt y x)
 
 -- Definition default_grEq (X:CField) (le:Relation X) : Relation X :=
 -- (fun x y => (le y x)).
+
+def default_grEq (X : Type) [Field X] (le : X → X → Prop) : X → X → Prop :=
+  fun x y => le y x
 
 -- (**
 -- %\begin{nameconvention}%
 -- In the names of lemmas, [ [<=] ] is written as [leEq] and
 -- [[0] [<=] ] is written as [nonneg].
 -- %\end{nameconvention}%
+-- *)
+
+-- (**
+-- ** Properties of [[<=]] and nonnegative elements
+-- In the names of lemmas, [[<=]] is written as [leEq] and
+-- [[0] [<=]] is written as [nonneg].
 -- *)
 
 -- Section COrdField_axioms.
@@ -145,6 +196,15 @@
 -- Let [F] be a field.
 -- %\end{convention}%
 -- *)
+
+-- (**
+-- ** Ordered field axioms
+-- %\begin{convention}%
+-- Let [F] be a field.
+-- %\end{convention}%
+-- *)
+
+--variable {F : Type} [Field F] [LinearOrder F] [IsStrictOrderedRing F]
 
 -- Variable F : COrdField.
 
@@ -158,10 +218,16 @@
 --  elim COrdField_is_COrdField; auto.
 -- Qed.
 
+lemma less_strorder (F : COrdField) : StrictOrder F.cof_crr F.cof_less :=
+  @IsOrderedField.ax_less_strorder F.cof_crr F.field_inst F.order_inst F.strict_order_inst F.cof_less F.cof_leEq F.cof_greater F.cof_grEq F.cof_proof
+
 -- Lemma less_transitive_unfolded : forall x y z : F, x [<] y -> y [<] z -> x [<] z.
 -- Proof.
 --  elim less_strorder; auto.
 -- Qed.
+
+lemma less_transitive_unfolded (F : COrdField) : ∀ x y z : F.cof_crr, F.cof_less x y → F.cof_less y z → F.cof_less x z :=
+  fun x y z h1 h2 => (less_strorder F).so_trans h1 h2
 
 -- Lemma less_antisymmetric_unfolded : forall x y : F, x [<] y -> Not (y [<] x).
 -- Proof.
@@ -172,6 +238,9 @@
 --  assumption.
 -- Qed.
 
+lemma less_antisymmetric_unfolded (F : COrdField) : ∀ x y : F.cof_crr, F.cof_less x y → ¬F.cof_less y x :=
+  fun x y h1 h2 => (less_strorder F).so_asym h1 h2
+
 -- Lemma less_irreflexive : irreflexive (cof_less (c:=F)).
 -- Proof.
 --  red in |- *.
@@ -179,44 +248,78 @@
 --  elim (less_antisymmetric_unfolded _ _ H H).
 -- Qed.
 
+lemma less_irreflexive (F : COrdField) : ∀ x : F.cof_crr, ¬F.cof_less x x :=
+  fun x h => less_antisymmetric_unfolded F x x h h
+
 -- Lemma less_irreflexive_unfolded : forall x : F, Not (x [<] x).
 -- Proof less_irreflexive.
+
+lemma less_irreflexive_unfolded (F : COrdField) : ∀ x : F.cof_crr, ¬F.cof_less x x :=
+  less_irreflexive F
 
 -- Lemma plus_resp_less_rht : forall x y z : F, x [<] y -> x[+]z [<] y[+]z.
 -- Proof.
 --  elim COrdField_is_COrdField; auto.
 -- Qed.
+variable (F : COrdField)
+
+lemma plus_resp_less_rht [Field F.cof_crr] : ∀ x y z : F.cof_crr, F.cof_less x y → F.cof_less (x + z) (y + z) :=
+  sorry
 
 -- Lemma mult_resp_pos : forall x y : F, [0] [<] x -> [0] [<] y -> [0] [<] x[*]y.
 -- Proof.
 --  elim COrdField_is_COrdField; auto.
 -- Qed.
 
+instance : OfNat F.cof_crr 0 := sorry
+instance : HMul F.cof_crr F.cof_crr F.cof_crr := sorry
+
+lemma mult_resp_pos : ∀ x y : F.cof_crr, F.cof_less 0 x → F.cof_less 0 y → F.cof_less 0 (x * y) :=
+  sorry
+
 -- Lemma less_conf_ap : forall x y : F, Iff (x [#] y) (x [<] y or y [<] x).
 -- Proof.
 --  elim COrdField_is_COrdField; auto.
 -- Qed.
+
+lemma less_conf_ap : ∀ x y : F.cof_crr, (x ≠ y) ↔ (F.cof_less x y ∨ F.cof_less y x) :=
+  @IsOrderedField.ax_less_conf_ap F.cof_crr F.field_inst F.order_inst F.strict_order_inst F.cof_less F.cof_leEq F.cof_greater F.cof_grEq F.cof_proof
 
 -- Lemma leEq_def : forall x y : F, (x [<=] y) <-> (Not (y [<] x)).
 -- Proof.
 --  elim COrdField_is_COrdField; auto.
 -- Qed.
 
+lemma leEq_def : ∀ x y : F.cof_crr, F.cof_leEq x y ↔ ¬F.cof_less y x :=
+  @IsOrderedField.def_leEq F.cof_crr F.field_inst F.order_inst F.strict_order_inst F.cof_less F.cof_leEq F.cof_greater F.cof_grEq F.cof_proof
+
 -- Lemma greater_def : forall x y : F, Iff (x [>] y) (y [<] x).
 -- Proof.
 --  elim COrdField_is_COrdField; auto.
 -- Qed.
+
+lemma greater_def : ∀ x y : F.cof_crr, F.cof_greater x y ↔ F.cof_less y x :=
+  @IsOrderedField.def_greater F.cof_crr F.field_inst F.order_inst F.strict_order_inst F.cof_less F.cof_leEq F.cof_greater F.cof_grEq F.cof_proof
 
 -- Lemma grEq_def : forall x y : F, (x [>=] y) <-> (y [<=] x).
 -- Proof.
 --  elim COrdField_is_COrdField; auto.
 -- Qed.
 
+lemma grEq_def : ∀ x y : F.cof_crr, F.cof_grEq x y ↔ F.cof_leEq y x :=
+  @IsOrderedField.def_grEq F.cof_crr F.field_inst F.order_inst F.strict_order_inst F.cof_less F.cof_leEq F.cof_greater F.cof_grEq F.cof_proof
+
 -- Lemma less_wdr : forall x y z : F, x [<] y -> y [=] z -> x [<] z.
 -- Proof Ccsr_wdr F cof_less.
 
+lemma less_wdr : ∀ x y z : F.cof_crr, F.cof_less x y → y = z → F.cof_less x z :=
+  fun x y z h_lt h_eq => by rw [←h_eq]; exact h_lt
+
 -- Lemma less_wdl : forall x y z : F, x [<] y -> x [=] z -> z [<] y.
 -- Proof Ccsr_wdl F cof_less.
+
+lemma less_wdl : ∀ x y z : F.cof_crr, F.cof_less x y → x = z → F.cof_less z y :=
+  fun x y z h_lt h_eq => by rw [h_eq] at h_lt; exact h_lt
 
 -- End COrdField_axioms.
 

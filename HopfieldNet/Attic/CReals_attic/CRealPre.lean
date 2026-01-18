@@ -416,7 +416,7 @@ lemma mul_equiv_same_index
 
 lemma div_lt_iff {a b c : ℚ} (hb : 0 < b) : a / b < c ↔ a < c * b := by
   change a * b⁻¹ < c ↔ a < c * b
-  rw [← mul_lt_mul_right hb]
+  rw [← mul_lt_mul_iff_left₀ hb]
   field_simp [hb.ne']
 
 lemma div_le_div_of_le_of_nonneg {a _ c d : ℚ} (ha : 0 ≤ a) (hc : 0 < c) (_ : 0 < d) (h_le : c ≤ d) :
@@ -745,10 +745,10 @@ theorem mul_respects_equiv {x₁ x₂ y₁ y₂ : CReal.Pre}
   have h_final := calc |A - D| ≤ |A - B_bridge| + |B_bridge - C_bridge| + |C_bridge - D| := h_tri
     _ ≤ (1/2^k + ε/3) + ε/3 + (1/2^k + ε/3) := by linarith [h_term1, h_term2.le, h_term3]
     _ = 1/2^(k-1) + ε := by
-      have h_eps : (ε/3) + ε/3 + ε/3 = ε := by ring_nf
+      have h_eps : (ε/3) + ε/3 + ε/3 = ε := by ring
       have h_pow : (1 : ℚ) / 2 ^ k + 1 / 2 ^ k = 1 / 2 ^ (k - 1) := by
         have h₁ : (1 : ℚ) / 2 ^ k + 1 / 2 ^ k = (2 : ℚ) / 2 ^ k := by
-          field_simp; ring_nf
+          field_simp; ring
         have hk : 0 < k := by
           have : 1 ≤ k := by
             dsimp [k]; exact Nat.succ_le_succ (Nat.zero_le n)
@@ -757,10 +757,9 @@ theorem mul_respects_equiv {x₁ x₂ y₁ y₂ : CReal.Pre}
           have hk' : k = (k - 1) + 1 := (Nat.succ_pred_eq_of_pos hk).symm
           field_simp [hk', pow_succ]
           exact Eq.symm (pow_succ' 2 n)
-        simp_all only [lt_sup_iff, div_pos_iff_of_pos_left, Nat.ofNat_pos, one_div, lt_add_iff_pos_left, add_pos_iff,
-          zero_lt_one, or_true, add_tsub_cancel_right, B_mid, Bx₁, By₂, B_tails, By₁, Bx₂, A, k, D, B_bridge, K,
-          C_bridge]
-      simp [add_comm, add_left_comm]; grind
+        rw [h₁, h₂]
+      rw [← h_pow, ← h_eps]
+      ring
     _ = 1/2^n + ε := by simp [k]
   exact h_final
 
@@ -798,7 +797,7 @@ lemma two_halves_to_succ_sub (n : ℕ) :
   calc
     (1 : ℚ) / 2 ^ (n + 1) - (1 : ℚ) / 2 ^ (n + 2)
         = ((1 : ℚ) / 2 ^ (n + 2) + (1 : ℚ) / 2 ^ (n + 2)) - (1 : ℚ) / 2 ^ (n + 2) := by
-            aesop
+            simp_all only [one_div]
     _ = (1 : ℚ) / 2 ^ (n + 2) := by ring
 
 lemma inv_pow_antitone_succ (n : ℕ) :
@@ -1010,14 +1009,13 @@ lemma mul_assoc_bound (a b c : CReal.Pre) (k : ℕ) :
       have h_le : K1 ≤ K_ab := Nat.le_add_right _ _
       rw [abs_sub_comm]
       have h_core := product_diff_bound a b h_le Ba Bb (a.abs_approx_le_cBound K1) (b.abs_approx_le_cBound K_ab)
-      apply le_trans h_core; rw [mul_one_div]
+      exact (le_trans h_core (by simp only [one_div]; exact Rat.le_refl))
     calc
       |(a.mul b).approx K1 * c.approx K1 - a.approx K1 * b.approx K1 * c.approx K1|
           = |((a.mul b).approx K1 - a.approx K1 * b.approx K1) * c.approx K1| := by ring_nf
-      _ = |(a.mul b).approx K1 - a.approx K1 * b.approx K1| * |c.approx K1| := by
-          simp [abs_mul]
+      _ = |(a.mul b).approx K1 - a.approx K1 * b.approx K1| * |c.approx K1| := by simp [abs_mul]
       _ ≤ ((Ba + Bb) / 2 ^ K1) * |c.approx K1| := by
-          exact mul_le_mul_of_nonneg_right h_ab_diff (abs_nonneg (c.approx K1))
+          exact mul_le_mul_of_nonneg_right h_ab_diff (abs_nonneg _)
       _ ≤ ((Ba + Bb) / 2 ^ K1) * Bc := by
           have h_nonneg : 0 ≤ (Ba + Bb) / 2 ^ K1 := by
             have hBa : 0 ≤ Ba := natCast_nonneg
@@ -1027,11 +1025,21 @@ lemma mul_assoc_bound (a b c : CReal.Pre) (k : ℕ) :
               exact pow_nonneg this _
             exact div_nonneg (add_nonneg hBa hBb) hden
           exact mul_le_mul_of_nonneg_left (c.abs_approx_le_cBound K1) h_nonneg
-      _ = Bc * (Ba + Bb) / 2 ^ K1 := by
-          simp [mul_comm, mul_left_comm, mul_assoc, div_eq_mul_inv]
+      _ = Bc * (Ba + Bb) / 2 ^ K1 := by simp [mul_comm, mul_left_comm, mul_assoc, div_eq_mul_inv]
   have h_diff2 : |P2.approx k - a.approx K2 * b.approx K2 * c.approx K2| ≤ Ba * (Bb+Bc) / 2^K2 := by
     dsimp [P2, CReal.Pre.mul]
     let Sbc := b.mulShift c
+    have hP2 :
+      a.approx (k + S2) * (b.mul c).approx (k + S2)
+        = a.approx K2 * (b.approx (K2 + Sbc) * c.approx (K2 + Sbc)) := by
+      dsimp [K2, S2]
+      dsimp [CReal.Pre.mul]
+    have h_goal_form :
+      |a.approx (k + S2) * (b.mul c).approx (k + S2) - a.approx K2 * b.approx K2 * c.approx K2|
+        =
+      |a.approx K2 * (b.approx (K2 + Sbc) * c.approx (K2 + Sbc))
+          - a.approx K2 * (b.approx K2 * c.approx K2)| := by
+      simp [hP2, K2, mul_assoc]
     have h_rw :
       a.approx K2 * (b.approx (K2 + Sbc) * c.approx (K2 + Sbc)) -
         a.approx K2 * (b.approx K2 * c.approx K2)
@@ -1043,7 +1051,7 @@ lemma mul_assoc_bound (a b c : CReal.Pre) (k : ℕ) :
       have h_le : K2 ≤ K2 + Sbc := Nat.le_add_right _ _
       have h := product_diff_bound b c h_le (Bb) (Bc)
                   (b.abs_approx_le_cBound K2) (c.abs_approx_le_cBound (K2 + Sbc))
-      simpa [abs_sub_comm] using h
+      simpa [abs_sub_comm, mul_comm, mul_left_comm, mul_assoc] using h
     have h_nonneg : 0 ≤ |a.approx K2| := abs_nonneg _
     have h_main :
       |a.approx K2 * (b.approx (K2 + Sbc) * c.approx (K2 + Sbc)) -
@@ -1061,33 +1069,70 @@ lemma mul_assoc_bound (a b c : CReal.Pre) (k : ℕ) :
     have h_bound := mul_le_mul_of_nonneg_right h_a_bound hM_nonneg
     have h_bound' : |a.approx K2| * ((Bb + Bc) * (1 / 2 ^ K2)) ≤ Ba * (Bb + Bc) / 2 ^ K2 := by
       simpa [div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using h_bound
-    rw [Nat.add_right_comm]; simp; grind [= cBound.eq_def, = Pre.mul.eq_def, = mulShift.eq_def,
-          = approx.eq_def]
-  have h_diff_ternary : |a.approx K1 * b.approx K1 * c.approx K1 - a.approx K2 * b.approx K2 * c.approx K2| ≤ B_ternary / 2^(min K1 K2) := by
+    calc
+      |P2.approx k - a.approx K2 * b.approx K2 * c.approx K2|
+          = |a.approx (k + S2) * (b.mul c).approx (k + S2) - a.approx K2 * b.approx K2 * c.approx K2| := by
+              rfl
+      _ = |a.approx K2 * (b.approx (K2 + Sbc) * c.approx (K2 + Sbc))
+              - a.approx K2 * (b.approx K2 * c.approx K2)| := h_goal_form
+      _ ≤ |a.approx K2| * ((Bb + Bc) * (1 / 2 ^ K2)) := h_main
+      _ ≤ Ba * (Bb + Bc) / 2 ^ K2 := h_bound'
+  have h_diff_ternary :
+      |a.approx K1 * b.approx K1 * c.approx K1 - a.approx K2 * b.approx K2 * c.approx K2|
+        ≤ B_ternary / 2^(min K1 K2) := by
     cases le_total K1 K2 with
-    | inl h_le => rw [min_eq_left h_le]; have h_core := ternary_product_diff_bound a b c h_le; apply le_trans h_core; rw [mul_one_div]
-    | inr h_le => rw [min_eq_right h_le, abs_sub_comm]; have h_core := ternary_product_diff_bound a b c h_le; apply le_trans h_core; rw [mul_one_div]
+    | inl h_le =>
+        rw [min_eq_left h_le]
+        have h_core := ternary_product_diff_bound a b c h_le
+        exact (le_trans h_core (by 
+          simp_all only [add_le_add_iff_left, one_div, P1, K1, S1, Bc, Ba, Bb, P2, K2, S2, B_ternary]
+          rfl))
+    | inr h_le =>
+        rw [min_eq_right h_le, abs_sub_comm]
+        have h_core := ternary_product_diff_bound a b c h_le
+        exact (le_trans h_core (by 
+          simp_all only [add_le_add_iff_left, one_div, P1, K1, S1, Bc, Ba, Bb, P2, K2, S2, B_ternary]
+          rfl))
   have h_K1_ge_k : k ≤ K1 := Nat.le_add_right k S1
   have h_K2_ge_k : k ≤ K2 := Nat.le_add_right k S2
   have h_minK_ge_k : k ≤ min K1 K2 := le_min h_K1_ge_k h_K2_ge_k
   have h_bound1_weak : Bc * (Ba+Bb) / 2^K1 ≤ Bc * (Ba+Bb) / 2^k := by
-    apply div_le_div_of_le_left (by positivity) (by positivity); exact (pow_le_pow_iff_right₀ rfl).mpr h_K1_ge_k
+    apply div_le_div_of_le_left (by positivity) (by positivity)
+    exact (pow_le_pow_iff_right₀ rfl).mpr h_K1_ge_k
   have h_bound2_weak : B_ternary / 2^(min K1 K2) ≤ B_ternary / 2^k := by
-    apply div_le_div_of_le_left (by positivity) (by positivity); exact (pow_le_pow_iff_right₀ rfl).mpr h_minK_ge_k
+    apply div_le_div_of_le_left (by positivity) (by positivity)
+    exact (pow_le_pow_iff_right₀ rfl).mpr h_minK_ge_k
   have h_bound3_weak : Ba * (Bb+Bc) / 2^K2 ≤ Ba * (Bb+Bc) / 2^k := by
-    apply div_le_div_of_le_left (by positivity) (by positivity); exact (pow_le_pow_iff_right₀ rfl).mpr h_K2_ge_k
+    apply div_le_div_of_le_left (by positivity) (by positivity)
+    exact (pow_le_pow_iff_right₀ rfl).mpr h_K2_ge_k
   calc
     |P1.approx k - P2.approx k|
-      ≤ |P1.approx k - a.approx K1 * b.approx K1 * c.approx K1| +
-        |a.approx K1 * b.approx K1 * c.approx K1 - a.approx K2 * b.approx K2 * c.approx K2| +
-        |a.approx K2 * b.approx K2 * c.approx K2 - P2.approx k| := by
-          calc _ = |(P1.approx k - _) + (_ - _) + (_ - P2.approx k)| := by ring_nf
-               _ ≤ _ := abs_add_three _ _ _
+      ≤ |P1.approx k - a.approx K1 * b.approx K1 * c.approx K1|
+        + |a.approx K1 * b.approx K1 * c.approx K1
+            - a.approx K2 * b.approx K2 * c.approx K2|
+        + |a.approx K2 * b.approx K2 * c.approx K2 - P2.approx k| := by
+          have : P1.approx k - P2.approx k =
+            (P1.approx k - a.approx K1 * b.approx K1 * c.approx K1)
+              + (a.approx K1 * b.approx K1 * c.approx K1
+                  - a.approx K2 * b.approx K2 * c.approx K2)
+              + (a.approx K2 * b.approx K2 * c.approx K2 - P2.approx k) := by ring_nf
+          simp_rw [this]
+          exact
+            abs_add_three (P1.approx k - a.approx K1 * b.approx K1 * c.approx K1)
+              (a.approx K1 * b.approx K1 * c.approx K1 - a.approx K2 * b.approx K2 * c.approx K2)
+              (a.approx K2 * b.approx K2 * c.approx K2 - P2.approx k)
     _ ≤ Bc*(Ba+Bb)/2^K1 + B_ternary/2^(min K1 K2) + Ba*(Bb+Bc)/2^K2 := by
-        rw [abs_sub_comm (a.approx K2 * b.approx K2 * c.approx K2)]; gcongr
-    _ ≤ Bc*(Ba+Bb)/2^k + B_ternary/2^k + Ba*(Bb+Bc)/2^k := by gcongr
-    _ = (Bc*(Ba+Bb) + Ba*(Bb+Bc) + B_ternary) / 2^k := by ring_nf
-    _ = _ := by dsimp [B_ternary, Ba, Bb, Bc]
+      have := abs_sub_comm (a.approx K2 * b.approx K2 * c.approx K2) (P2.approx k)
+      gcongr
+      simp_all only [Nat.add_min_add_left, le_add_iff_nonneg_right, zero_le, le_inf_iff, and_self, P1, K1, S1, Bc, Ba,
+        Bb, P2, K2, S2, B_ternary]
+    _ ≤ Bc*(Ba+Bb)/2^k + B_ternary/2^k + Ba*(Bb+Bc)/2^k := by
+      gcongr
+    _ = (Bc*(Ba+Bb) + Ba*(Bb+Bc) + B_ternary) / 2^k := by
+      field_simp [div_eq_mul_inv]; ring
+    _ = (c.cBound * (a.cBound + b.cBound) + a.cBound * (b.cBound + c.cBound) +
+          (a.cBound*c.cBound + b.cBound*c.cBound + a.cBound*b.cBound) : ℚ) / 2^k := by
+      simp [B_ternary, Ba, Bb, Bc, mul_add, add_comm, add_left_comm, add_assoc]
 
 theorem mul_assoc_pre (a b c : CReal.Pre) :
     CReal.Pre.Equiv ((a.mul b).mul c) (a.mul (b.mul c)) := by
@@ -1487,10 +1532,11 @@ lemma le_well_defined_forward
                 ≤ y₂.approx k + (1/2^(k-1) + 2 / 2^(k-1)) := by
       simpa [add_comm, add_left_comm, add_assoc] using
         add_le_add_right h4 (2 / 2^(k-1))
-    exact le_trans h_mid (by
-    rw [one_plus_two_over_pow (k - 1)] at step
-    exact step
-    )
+    have : y₁.approx k + 2 / 2^(k-1)
+          ≤ y₂.approx k + 3 / 2^(k-1) := by
+      rw [one_plus_two_over_pow (k - 1)] at step
+      exact step
+    exact le_trans h_mid this
   have h_le_to_k :
       x₂.approx (n+1) ≤ y₂.approx k + 1/2^(n+1) + 3 / 2^(k-1) := by
     have step := add_le_add_right h_mid' (1 / 2^(n+1))
@@ -1690,7 +1736,7 @@ theorem le_antisymm (x y : CReal) : x ≤ y → y ≤ x → x = y := by
   have h_lower : -(1 / 2 ^ n : ℚ) ≤ x.approx (n + 1) - y.approx (n + 1) := by
     have hy' : y.approx (n + 1) ≤ (1 : ℚ) / 2 ^ n + x.approx (n + 1) := by
       simpa [add_comm] using (hyx n)
-    have hy_sub : y.approx (n + 1) - x.approx (n + 1) ≤ (1 : ℚ) / 2 ^ n := by simp; grind
+    have hy_sub : y.approx (n + 1) - x.approx (n + 1) ≤ (1 : ℚ) / 2 ^ n := by simp_all
     have := neg_le_neg hy_sub
     simpa [sub_eq_add_neg] using this
   exact (abs_le.mpr ⟨h_lower, h_upper⟩)
@@ -2033,7 +2079,8 @@ theorem add_le_add_left (a b : CReal) (h : a ≤ b) (c : CReal) : c + a ≤ c + 
         ring
     _ ≤ (c.approx (n+2) + b.approx (n+2)) + (1 : ℚ) / 2^n := by
         gcongr
-        all_goals aesop
+        · simp_all only [Nat.one_le_ofNat]
+        · simp_all only [le_add_iff_nonneg_right, zero_le]
 
 theorem zero_le_one : (0 : CReal) ≤ 1 := by
   intro n
@@ -2058,12 +2105,14 @@ theorem mul_nonneg (a b : CReal) (ha : 0 ≤ a) (hb : 0 ≤ b) : 0 ≤ a * b := 
     have h' : 0 ≤ a.approx K + (1 : ℚ) / 2 ^ (K - 1) := by
       simpa [add_comm] using haK_nonneg
     have hneg := (neg_le_iff_add_nonneg).2 h'
-    simp; ring_nf; aesop
+    simp; ring_nf; simp_all only [add_pos_iff, zero_lt_one, or_true, true_or, Nat.succ_add_sub_one, one_div, inv_pow, K,
+      S]
   have hbK : -(1 : ℚ) / 2 ^ (K - 1) ≤ b.approx K := by
     have h' : 0 ≤ b.approx K + (1 : ℚ) / 2 ^ (K - 1) := by
       simpa [add_comm] using hbK_nonneg
     have hneg := (neg_le_iff_add_nonneg).2 h'
-    simp; ring_nf; aesop
+    simp; ring_nf; simp_all only [add_pos_iff, zero_lt_one, or_true, true_or, Nat.succ_add_sub_one, one_div, inv_pow, K,
+      S]
   let Ba : ℚ := a.cBound
   let Bb : ℚ := b.cBound
   have hS_sum : (a.cBound + b.cBound : ℚ) ≤ 2 ^ S :=
@@ -2172,8 +2221,8 @@ private lemma pre_pos_sub_implies_le
     have h := (abs_sub_le_iff).1 hx_reg
     linarith [h.left]
   have h_gap_at_N2 : (1 : ℚ) / 2 ^ N < y.approx (N + 2) - x.approx (N + 2) := by
-    dsimp [CReal.Pre.add, CReal.Pre.neg] at hN
-    simp; ring_nf; simp; grind
+    simpa [CReal.Pre.add, CReal.Pre.neg, sub_eq_add_neg,
+      Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using hN
   have h_half_eq : (1 : ℚ) / 2 ^ N - 1 / 2 ^ (N + 1) = 1 / 2 ^ (N + 1) := by
     field_simp [pow_succ]; ring
   have h_yxK : (1 : ℚ) / 2 ^ (N + 1) < y.approx K - x.approx K := by
@@ -2194,7 +2243,8 @@ private lemma pre_pos_sub_implies_le
       have : (y.approx (N + 2) - x.approx (N + 2)) - 1 / 2 ^ (N + 1)
                > 1 / 2 ^ N - 1 / 2 ^ (N + 1) := by
         linarith [h_gap_at_N2]
-      aesop
+      simp_all only [one_div, Nat.add_max_add_right, add_le_add_iff_right, le_sup_left, Nat.reduceLeDiff, le_sup_right,
+        ge_iff_le, tsub_le_iff_right, gt_iff_lt, K]
     exact lt_of_lt_of_le h_target h_lower_bound
   have hx_tail : x.approx (n + 1) ≤ x.approx K + 1 / 2 ^ (n + 1) := by
     have h := x.is_regular (n + 1) K hK_ge_n1
@@ -2255,7 +2305,7 @@ theorem lt_iff_pos (x y : CReal) : x < y ↔ Pos (y - x) := by
   constructor
   · refine Quot.induction_on₂ x y (fun x_pre y_pre => ?_)
     intro hlt
-    classical
+    
     have h_le : CReal.Pre.le x_pre y_pre := by
       simpa using hlt.1
     have h_not_le : ¬ CReal.Pre.le y_pre x_pre := by
@@ -2364,7 +2414,7 @@ theorem mul_pos (a b : CReal) (ha : 0 < a) (hb : 0 < b) : 0 < a * b := by
     have : (1 : ℚ) / 2 ^ Na - 1 / 2 ^ (Na + 1) < xa.approx K := by
       have : (1 : ℚ) / 2 ^ Na < xa.approx (Na + 1) := hNa
       exact lt_of_lt_of_le (by linarith) h_ge
-    aesop
+    simp_all only [one_div, ge_iff_le, tsub_le_iff_right, gt_iff_lt, K, M, S]
   have h_b_stable : xb.approx K > 1 / 2 ^ (Nb + 1) := by
     have h_reg := xb.is_regular (Nb + 1) K hK_ge_b
     have h_reg' : |xb.approx K - xb.approx (Nb + 1)| ≤ 1 / 2 ^ (Nb + 1) := by
@@ -2536,13 +2586,11 @@ lemma pos_uniform_lower_bound (y : CReal.Pre) (hy : CReal.Pre.Pos y) :
   have h_sub_half : (1 : ℚ) / 2 ^ N - 1 / 2 ^ (N + 1) = 1 / 2 ^ (N + 1) := by
     field_simp [pow_succ]; ring
   have h_half_lt : (1 : ℚ) / 2 ^ (N + 1) < y.approx (N + 1) - 1 / 2 ^ (N + 1) := by
-    rw [← h_sub_half]
-    linarith [hN]
+    rw [← h_sub_half]; linarith [hN]
   have yK_gt_half_succ : y.approx K > 1 / 2 ^ (N + 1) :=
     lt_of_lt_of_le h_half_lt yK_ge
   have h_sub_id : (1 : ℚ) / 2 ^ (N + 1) - 1 / 2 ^ K = 1 / 2 ^ (N + 2) := by
-    dsimp [K]
-    field_simp [pow_succ]; ring
+    dsimp [K]; field_simp [pow_succ]; ring
   refine ⟨K, δ, hδ_pos, ?_⟩
   intro m hm
   have hreg2 := y.is_regular K m hm
@@ -2555,10 +2603,13 @@ lemma pos_uniform_lower_bound (y : CReal.Pre) (hy : CReal.Pre.Pos y) :
     have h3 := neg_le_neg h2
     simpa [sub_eq_add_neg, add_comm, add_left_comm, add_assoc] using h3
   have h_delta_lt : δ < y.approx K - 1 / 2 ^ K := by
-    have : 1 / 2 ^ (N + 1) - 1 / 2 ^ K < y.approx K - 1 / 2 ^ K :=
+    have haux : (1 / 2 ^ (N + 1) - 1 / 2 ^ K) < (y.approx K - 1 / 2 ^ K) :=
       sub_lt_sub_right yK_gt_half_succ (1 / 2 ^ K)
-    aesop
-  grind
+    simp_all only [one_div, inv_pos, Nat.ofNat_pos, pow_succ_pos, add_le_add_iff_left, Nat.one_le_ofNat, ge_iff_le,
+      tsub_le_iff_right, gt_iff_lt, δ, K]
+  have hK_sub_le : y.approx K - 1 / 2 ^ K ≤ y.approx m := by
+    linarith [ym_ge]
+  exact (le_of_lt (lt_of_lt_of_le h_delta_lt hK_sub_le))
 
 /-- Bridge: the quotient value of `n • ⟦y⟧` is represented by `Pre.nsmul n y`. -/
 @[simp] lemma nsmul_def (y : CReal.Pre) (n : ℕ) :
@@ -2611,7 +2662,7 @@ instance : Archimedean CReal := by
   have h_small_half : (1 : ℚ) / 2 ^ K < δ := lt_of_le_of_lt h_pow_mono hK1
   have h_uniform' : ∀ m : ℕ, K ≤ m → δ ≤ y_pre.approx m := by
     intro m hm
-    aesop
+    simp_all only [one_div, le_sup_left, le_sup_right, sup_le_iff, K]
   let Bx : ℕ := x_pre.cBound
   let n := Nat.ceil ((Bx : ℚ) / δ) + 1
   have hBx_base : (Bx : ℚ) ≤ (Nat.ceil ((Bx : ℚ) / δ) : ℚ) * δ :=
@@ -2730,29 +2781,26 @@ def inv (x : CReal.Pre) (W : InvWitness x) : CReal.Pre where
     have h_bound_Kn := x.inv_witness_stability W Kn hKn_ge_N1
     have h_bound_Km := x.inv_witness_stability W Km hKm_ge_N1
     have h_denom : 1/2^S < |x.approx Kn * x.approx Km| := by
-      rw [abs_mul]
-      have h_eq : (1:ℚ)/2^S = 1/2^(N+1) * 1/2^(N+1) := by
-        dsimp [S, N]
-        rw [pow_add]
-        field_simp
-        ring
-      rw [h_eq]
-      have h_pos_bound : (0 : ℚ) < 1 / 2 ^ (N + 1) := by positivity
-      have h_bound_Kn_pos : (0 : ℚ) < |x.approx Kn| := lt_trans h_pos_bound h_bound_Kn
-      have h_bound_Km_pos : (0 : ℚ) < |x.approx Km| := lt_trans h_pos_bound h_bound_Km
-      have h_bound_Kn' : 1/2^(N+1) < |x.approx Kn| := by
-        dsimp [N]; exact h_bound_Kn
-      have h_bound_Km' : 1/2^(N+1) < |x.approx Km| := by
-        dsimp [N]; exact h_bound_Km
+      have h_eq : (1 : ℚ) / 2 ^ S = (1 / 2 ^ (N + 1)) * (1 / 2 ^ (N + 1)) := by
+        dsimp [S]
+        simp [pow_add, one_div, mul_comm, mul_left_comm]
+        ring_nf
       set d : ℚ := 1 / 2 ^ (N + 1) with hd
       have hd_pos : 0 < d := by
         have : 0 < (2 : ℚ) ^ (N + 1) := pow_pos (by norm_num) _
-        simp [d]
+        simp [d, one_div, this]
+      have h_bound_Kn' : d < |x.approx Kn| := by simpa [d, hd] using h_bound_Kn
+      have h_bound_Km' : d < |x.approx Km| := by simpa [d, hd] using h_bound_Km
+      have h_bound_Kn_pos : 0 < |x.approx Kn| := lt_trans hd_pos h_bound_Kn'
+      have h_bound_Km_pos : 0 < |x.approx Km| := lt_trans hd_pos h_bound_Km'
       have h_step1 : d * d < d * |x.approx Km| := by
-        simpa [d] using mul_lt_mul_of_pos_left h_bound_Km' hd_pos
+        exact (mul_lt_mul_iff_right₀ hd_pos).mpr h_bound_Km'
       have h_step2 : d * |x.approx Km| < |x.approx Kn| * |x.approx Km| := by
-        simpa [d, mul_comm] using mul_lt_mul_of_pos_right h_bound_Kn' h_bound_Km_pos
-      grind
+        exact (Rat.mul_lt_mul_right h_bound_Km_pos).mpr h_bound_Kn
+      have h_trans : d * d < |x.approx Kn| * |x.approx Km| := lt_trans h_step1 h_step2
+      have : (1 : ℚ) / 2 ^ S = d * d := by
+        simp [h_eq, d, one_div]
+      simpa [this, abs_mul, mul_comm, mul_left_comm, mul_assoc]
     have h_num := x.is_regular Kn Km hKnm
     have h_ne_zero_Kn : x.approx Kn ≠ 0 := by
       intro h_eq_zero
@@ -3022,7 +3070,8 @@ lemma separated_of_equiv_left
     have hK_ge : Wx.N + 1 ≤ K := by
       dsimp [K]
       have : N + 1 ≤ N + 3 := Nat.add_le_add_left (by decide : 1 ≤ 3) N
-      aesop
+      simp_all only [lt_add_iff_pos_left, add_pos_iff, Nat.ofNat_pos, or_true, add_le_add_iff_left, Nat.one_le_ofNat, K,
+        Wx]
     exact inv_witness_stability x Wx K hK_ge
   have hyK_lower : |y.approx K| ≥ |x.approx K| - (1 : ℚ) / 2 ^ (K - 1) :=
     abs_lower_via_equiv_pos hxy hK
@@ -3032,7 +3081,8 @@ lemma separated_of_equiv_left
     simp [K]
   have : (1 : ℚ) / 2 ^ (N + 2) < |x.approx K| - 1 / 2 ^ (N + 2) := by
     have hstep := sub_lt_sub_right hxK ((1 : ℚ) / 2 ^ (N + 2))
-    aesop
+    simp_all only [lt_add_iff_pos_left, add_pos_iff, Nat.ofNat_pos, or_true, one_div, Nat.add_one_sub_one, ge_iff_le,
+      tsub_le_iff_right, K]
   have hyK : (1 : ℚ) / 2 ^ (N + 2) < |y.approx K| := by
     have hyK' : |x.approx K| - (1 : ℚ) / 2 ^ (N + 2) ≤ |y.approx K| := by
       simpa [hKpred] using hyK_lower
@@ -3070,7 +3120,8 @@ def transfer_witness (x y : CReal.Pre) (hxy : CReal.Pre.Equiv x y) (Wx : InvWitn
     simpa using CReal.two_halves_to_succ_sub N
   have h_strict : (1 : ℚ) / 2 ^ (N + 2) < |x.approx K| - 1 / 2 ^ (N + 2) := by
     have := sub_lt_sub_right h_xK ((1 : ℚ) / 2 ^ (N + 2))
-    aesop
+    simp_all only [add_le_add_iff_left, Nat.one_le_ofNat, one_div, lt_add_iff_pos_left, add_pos_iff, Nat.ofNat_pos,
+      or_true, Nat.add_one_sub_one, ge_iff_le, tsub_le_iff_right, K, N]
   have h_mono : |x.approx K| - (1 : ℚ) / 2 ^ (N + 2) ≤ |y.approx K| := by
     simpa [hKpred] using hyK_lower
   have hyK : (1 : ℚ) / 2 ^ (N + 2) < |y.approx K| := lt_of_lt_of_le h_strict h_mono
@@ -3158,7 +3209,7 @@ lemma inv_two_index_bound_of_regular_and_bounds
 -- algebra helpers for dyadic powers
 lemma one_div_pow_mul_one_div_pow (a b : ℕ) :
   (1 : ℚ) / 2 ^ a * (1 / 2 ^ b) = (1 : ℚ) / 2 ^ (a + b) := by
-  field_simp [div_eq_mul_inv, pow_add, mul_comm, mul_left_comm, mul_assoc]; grind
+  field_simp [div_eq_mul_inv, pow_add, mul_comm, mul_left_comm, mul_assoc]; exact pow_add 2 a b
 
 lemma div_one_div_pow_simp (a b : ℕ) :
   ((1 : ℚ) / 2 ^ (a + b)) / ((1 : ℚ) / 2 ^ b) = (1 : ℚ) / 2 ^ a := by
@@ -3251,7 +3302,9 @@ theorem inv_respects_equiv
       have hsimps :
           ((1 : ℚ) / 2 ^ Kx) / ((1 : ℚ) / 2 ^ (2 * Nx + 2)) = (1 : ℚ) / 2 ^ k := by
         simpa [hKx] using CReal.Pre.div_one_div_pow_simp k (2 * Nx + 2)
-      aesop
+      simp_all only [add_le_add_iff_left, add_le_add_iff_right, Nat.ofNat_pos, mul_le_mul_iff_right₀,
+        le_add_iff_nonneg_right, zero_le, one_div, inf_of_le_left, div_inv_eq_mul, ge_iff_le,
+        W'y, Kx, k, Sx, Nx, Ky, Sy, L, Ly]
     have hKpos : 0 < Ky := by dsimp [Ky]; exact Nat.succ_pos _
     have h_term2 :=
       CReal.Pre.inv_same_index_bound_of_equiv (x := x) (y := y) hxy
@@ -3271,11 +3324,14 @@ theorem inv_respects_equiv
       have hdiv :
           (1 : ℚ) / 2 ^ (Ky - 1) / (L * Ly) = (1 : ℚ) / 2 ^ (k + 1) := by
         have : (Ky - 1) = (k + 1) + (2 * Nx + 4) := by
-          grind
+          simp +arith [*]
         simpa [this, hden] using CReal.Pre.div_one_div_pow_simp (k + 1) (2 * Nx + 4)
       have hk : k + 1 = n + 2 := by simp [k]
       have : |(x.approx Ky)⁻¹ - (y.approx Ky)⁻¹| ≤ (1 : ℚ) / 2 ^ (k + 1) := by
-        aesop
+        simp_all only [add_le_add_iff_left, add_le_add_iff_right, Nat.ofNat_pos, mul_le_mul_iff_right₀,
+          le_add_iff_nonneg_right, zero_le, one_div, inf_of_le_left, add_pos_iff, _root_.zero_lt_one, or_true,
+          mul_pos_iff_of_pos_left, or_self, Nat.add_succ_sub_one, Nat.add_left_cancel_iff, Nat.add_right_cancel_iff,
+          div_inv_eq_mul, W'y, Kx, k, Sx, Nx, Ky, Sy, L, Ly]
       simpa [hk] using this
     have := calc
       |(x.approx Kx)⁻¹ - (y.approx Ky)⁻¹|
@@ -3367,7 +3423,12 @@ theorem mul_inv_cancel (x : CReal.Pre) (W : CReal.Pre.InvWitness x) :
           ≤ ((1 : ℚ) / 2 ^ K) / L := by
       have h1 : |x.approx K * (x.approx K_final)⁻¹ - 1|
                 ≤ ((1 : ℚ) / 2 ^ K) / |x.approx K_final| := by
-        simp; grind
+        rw [h_eq_div]
+        have h_nonneg : 0 ≤ |x.approx K_final|⁻¹ := by
+          exact inv_nonneg.mpr (abs_nonneg _)
+        have h_mul := mul_le_mul_of_nonneg_right h_num_reg h_nonneg
+        simpa [div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc]
+          using h_mul
       exact _root_.le_trans h1 h_den_step
     have h_prod_eq : prod.approx M = x.approx K * (x.approx K_final)⁻¹ := by
       dsimp [prod, CReal.Pre.mul, inv_x, CReal.Pre.inv, K, K_final, S_inv]
@@ -3379,7 +3440,7 @@ theorem mul_inv_cancel (x : CReal.Pre) (W : CReal.Pre.InvWitness x) :
         have : N + n + 2 + S_mul = (N + 1) + (n + 1 + S_mul) := by
           calc
             N + n + 2 + S_mul
-                = N + (n + 1) + (1 + S_mul) := by simp [Nat.add_assoc]; grind
+                = N + (n + 1) + (1 + S_mul) := by simp [Nat.add_assoc]; simp +arith
             _ = (N + 1) + (n + 1 + S_mul) := by
                 simp [Nat.add_assoc, Nat.add_left_comm]
         simpa [K, M] using this
@@ -3392,7 +3453,8 @@ theorem mul_inv_cancel (x : CReal.Pre) (W : CReal.Pre.InvWitness x) :
         (1 : ℚ) / 2 ^ (n + 1 + S_mul) ≤ (1 : ℚ) / 2 ^ (n + 1) := by
       exact one_div_pow_le_one_div_pow_of_le rfl (Nat.le_add_right _ _)
     have h_main' : |prod.approx M - 1| ≤ (1 : ℚ) / 2 ^ (n + 1 + S_mul) := by
-      aesop
+      simp_all only [lt_add_iff_pos_left, add_pos_iff, Nat.ofNat_pos, or_true, one_div, abs_pos, ne_eq,
+        not_false_eq_true, div_inv_eq_mul, M, N, K_final, K, S_mul, inv_x, S_inv, L, prod]
     exact h_main'.trans h_mono
   dsimp [CReal.Pre.Equiv, CReal.Pre.one]
   have h_reg : |prod.approx (n+1) - prod.approx M| ≤ 1 / 2 ^ (n+1) := by
@@ -3609,7 +3671,6 @@ theorem apart_zero_iff_separated (x : CReal) :
         zero_add_pre (CReal.Pre.neg x_pre)
       exact Or.inr ((Pre.pos_well_defined _ _ h_eq2).mpr hnx)
 
-
 /-! ### Pseudo-Order Structure -/
 
 /--
@@ -3624,10 +3685,11 @@ theorem pseudo_order_property (x y z : CReal) (hxy : x < y) : x < z ∨ z < y :=
   dsimp [CReal.Pre.add, CReal.Pre.neg] at hN
   let M := N + 3
   let K := M + 1
-  have h_reg_diff := (y_pre.add (x_pre.neg)).is_regular (N+1) K (by simp [K, M])
+  have h_reg_diff := (y_pre.add (x_pre.neg)).is_regular (N+1) K (by simp [K,M])
   dsimp [CReal.Pre.add, CReal.Pre.neg] at h_reg_diff
   have h_diff_K_ge :
-      (y_pre.approx (N+2) - x_pre.approx (N+2)) - 1/2^(N+1) ≤ (y_pre.approx (K+1) - x_pre.approx (K+1)) := by
+      (y_pre.approx (N+2) - x_pre.approx (N+2)) - 1/2^(N+1)
+        ≤ y_pre.approx (K+1) - x_pre.approx (K+1) := by
     have h_pair := (abs_sub_le_iff).1 h_reg_diff
     have h_aux :
         (y_pre.approx (N+2) - x_pre.approx (N+2)) -
@@ -3635,189 +3697,298 @@ theorem pseudo_order_property (x y z : CReal) (hxy : x < y) : x < z ∨ z < y :=
           ≤ 1 / 2 ^ (N + 1) := by
       simpa [sub_eq_add_neg, add_comm, add_left_comm, add_assoc] using h_pair.left
     linarith
-  have h_gap_stable : 1/2^(N+1) < (y_pre.approx (K+1) - x_pre.approx (K+1)) := by
-    have h_sub : (1:ℚ)/2^N - 1/2^(N+1) = 1/2^(N+1) := by field_simp [pow_succ]; ring
+  have h_gap_stable : 1/2^(N+1) < y_pre.approx (K+1) - x_pre.approx (K+1) := by
+    have h_sub : (1:ℚ)/2^N - 1/2^(N+1) = 1/2^(N+1) := by
+      field_simp [pow_succ]; ring
     calc
       1/2^(N+1) = 1/2^N - 1/2^(N+1) := h_sub.symm
-      _ < (y_pre.approx (N+2) + -x_pre.approx (N+2)) - 1/2^(N+1) := by
-            exact sub_lt_sub_right hN _
-      _ = (y_pre.approx (N+2) - x_pre.approx (N+2)) - 1/2^(N+1) := by
-            simp [sub_eq_add_neg]
-      _ ≤ (y_pre.approx (K+1) - x_pre.approx (K+1)) := h_diff_K_ge
+      _ < (y_pre.approx (N+2) + -x_pre.approx (N+2)) - 1/2^(N+1) :=
+            sub_lt_sub_right hN _
+      _ = (y_pre.approx (N+2) - x_pre.approx (N+2)) - 1/2^(N+1) := by simp [sub_eq_add_neg]
+      _ ≤ y_pre.approx (K+1) - x_pre.approx (K+1) := h_diff_K_ge
   let m_K := (x_pre.approx K + y_pre.approx K) / 2
   cases le_or_gt (z_pre.approx K) m_K with
   | inl h_le =>
+    -- z < y branch
     right
     apply (lt_iff_pos ⟦z_pre⟧ ⟦y_pre⟧).mpr
     dsimp [Pos, CReal.Pre.Pos]
-    use M
-    dsimp [CReal.Pre.add, CReal.Pre.neg]
-    have h_diff_ge_half : (y_pre.approx K - x_pre.approx K) / 2 ≤ y_pre.approx K - z_pre.approx K := by
+    have h_diff_ge_half : (y_pre.approx K - x_pre.approx K)/2 ≤
+        y_pre.approx K - z_pre.approx K := by
       calc
-        (y_pre.approx K - x_pre.approx K) / 2
-          = y_pre.approx K - (x_pre.approx K + y_pre.approx K) / 2 := by ring
-        _ ≤ y_pre.approx K - z_pre.approx K := by
-          exact sub_le_sub_left h_le _
-    have h_gap_half_K1 : (1 : ℚ) / 2 ^ (N + 2)
-        < (y_pre.approx (K + 1) - x_pre.approx (K + 1)) / 2 := by
-      have h_mul := (mul_lt_mul_of_pos_right h_gap_stable (by norm_num : 0 < (1 : ℚ) / 2))
-      simpa [one_div, pow_succ, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using h_mul
+        (y_pre.approx K - x_pre.approx K)/2
+            = y_pre.approx K - (x_pre.approx K + y_pre.approx K)/2 := by ring
+        _ ≤ y_pre.approx K - z_pre.approx K := sub_le_sub_left h_le _
+    -- one–step regularity triples
     have hy_pair :=
       (abs_sub_le_iff).1 (by simpa using y_pre.is_regular K (K+1) (Nat.le_succ _))
     have hz_pair :=
       (abs_sub_le_iff).1 (by simpa using z_pre.is_regular K (K+1) (Nat.le_succ _))
     have hx_pair :=
       (abs_sub_le_iff).1 (by simpa using x_pre.is_regular K (K+1) (Nat.le_succ _))
-    have hz_up : z_pre.approx (K + 1) ≤ z_pre.approx K + 1 / 2 ^ K := by
-      have hz := (sub_le_iff_le_add).mp hz_pair.right
-      simpa [add_comm, one_div] using hz
-    have hx_ge : x_pre.approx (K + 1) ≥ x_pre.approx K - 1 / 2 ^ K := by
-      have hx := (sub_le_iff_le_add).mp hx_pair.left
-      have hx' : x_pre.approx K - (2 ^ K)⁻¹ ≤ x_pre.approx (K + 1) :=
-        (sub_le_iff_le_add).2 (by simpa [add_comm] using hx)
-      simpa [one_div] using hx'
-    have hy_ge : y_pre.approx (K + 1) ≥ y_pre.approx K - 1 / 2 ^ K := by
-      have hy := (sub_le_iff_le_add).mp hy_pair.left
-      have hy' : y_pre.approx K - (2 ^ K)⁻¹ ≤ y_pre.approx (K + 1) :=
-        (sub_le_iff_le_add).2 (by simpa [add_comm] using hy)
-      simpa [one_div] using hy'
+    have hz_up : z_pre.approx (K+1) ≤ z_pre.approx K + 1 / 2 ^ K := by
+      have h := (sub_le_iff_le_add).mp hz_pair.right
+      simpa [add_comm, one_div] using h
+    have hx_ge : x_pre.approx (K+1) ≥ x_pre.approx K - 1 / 2 ^ K := by
+      have h := (sub_le_iff_le_add).mp hx_pair.left
+      have : x_pre.approx K - (2^K)⁻¹ ≤ x_pre.approx (K+1) :=
+        (sub_le_iff_le_add).2 (by simpa [add_comm] using h)
+      simpa [one_div] using this
+    have hy_ge : y_pre.approx (K+1) ≥ y_pre.approx K - 1 / 2 ^ K := by
+      have h := (sub_le_iff_le_add).mp hy_pair.left
+      have : y_pre.approx K - (2^K)⁻¹ ≤ y_pre.approx (K+1) :=
+        (sub_le_iff_le_add).2 (by simpa [add_comm] using h)
+      simpa [one_div] using this
     have hm_ge :
-        (x_pre.approx (K + 1) + y_pre.approx (K + 1)) / 2
-          ≥ (x_pre.approx K + y_pre.approx K) / 2 - 1 / 2 ^ K := by
+        (x_pre.approx (K+1) + y_pre.approx (K+1))/2 ≥
+          (x_pre.approx K + y_pre.approx K)/2 - 1/2^K := by
       linarith [hx_ge, hy_ge]
     have hz_up' :
-        z_pre.approx (K + 1)
-          ≤ (x_pre.approx (K + 1) + y_pre.approx (K + 1)) / 2 + 2 / 2 ^ K := by
-      have hz_to_mK : z_pre.approx (K + 1) ≤ (x_pre.approx K + y_pre.approx K) / 2 + 1 / 2 ^ K :=
-        _root_.le_trans hz_up (add_le_add_right h_le _)
-      have mK_to_mK1 :
-          (x_pre.approx K + y_pre.approx K) / 2 + 1 / 2 ^ K
-            ≤ (x_pre.approx (K + 1) + y_pre.approx (K + 1)) / 2 + 2 / 2 ^ K := by
-        have : (x_pre.approx K + y_pre.approx K) / 2
-                ≤ (x_pre.approx (K + 1) + y_pre.approx (K + 1)) / 2 + 1 / 2 ^ K := by
-          linarith [hm_ge]
+        z_pre.approx (K+1) ≤
+          (x_pre.approx (K+1) + y_pre.approx (K+1))/2 + 2/2^K := by
+      have hz_to_mK :
+          z_pre.approx (K+1) ≤ (x_pre.approx K + y_pre.approx K)/2 + 1/2^K :=
+        (hz_up.trans (add_le_add_right h_le _))
+      have : (x_pre.approx K + y_pre.approx K)/2
+              ≤ (x_pre.approx (K+1) + y_pre.approx (K+1))/2 + 1/2^K := by
+        linarith [hm_ge]
+      have step' := add_le_add_right this (1/2^K)
+      have htwo : (1/2^K : ℚ) + 1/2^K = 2/2^K := by ring
+      have h_lift :
+          (x_pre.approx K + y_pre.approx K)/2 + 1/2^K
+            ≤ (x_pre.approx (K+1) + y_pre.approx (K+1))/2 + 2/2^K := by
         calc
-          (x_pre.approx K + y_pre.approx K) / 2 + 1 / 2 ^ K
-              ≤ ((x_pre.approx (K + 1) + y_pre.approx (K + 1)) / 2 + 1 / 2 ^ K) + 1 / 2 ^ K := by
-                exact add_le_add_right this (1 / 2 ^ K)
-          _ = (x_pre.approx (K + 1) + y_pre.approx (K + 1)) / 2 + 2 / 2 ^ K := by
-                ring
-      exact _root_.le_trans hz_to_mK mK_to_mK1
-    have h_two_over : (2 : ℚ) / 2 ^ K = (1 : ℚ) / 2 ^ (N + 3) := by
-      have hK : K = N + 4 := by
-        simp [K, M, Nat.add_comm, Nat.add_left_comm]
-      have hpow : (2 : ℚ) ^ (N + 4) = (2 : ℚ) ^ (N + 3) * 2 := by
-        simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using pow_succ (2 : ℚ) (N + 3)
-      have : (2 : ℚ) / 2 ^ (N + 4) = (1 : ℚ) / 2 ^ (N + 3) := by
-        simpa [hpow] using (by field_simp : (2 : ℚ) / ((2 : ℚ) ^ (N + 3) * 2) = (1 : ℚ) / (2 : ℚ) ^ (N + 3))
-      simpa [hK] using this
-    have h_sub_id : (1 : ℚ) / 2 ^ (N + 2) - (1 : ℚ) / 2 ^ (N + 3) = (1 : ℚ) / 2 ^ (N + 3) := by
-      simpa using CReal.two_halves_to_succ_sub (N + 1)
+          (x_pre.approx K + y_pre.approx K)/2 + 1/2^K
+              ≤ (x_pre.approx (K+1)+y_pre.approx (K+1))/2 + 1/2^K + 1/2^K := step'
+          _ = (x_pre.approx (K+1)+y_pre.approx (K+1))/2 + (1/2^K + 1/2^K) := by ring
+          _ = (x_pre.approx (K+1)+y_pre.approx (K+1))/2 + 2/2^K := by simp; ring_nf
+      exact hz_to_mK.trans h_lift
+    have hK_expr : K = N + 4 := by
+      simp [K,M, Nat.add_comm, Nat.add_left_comm]
+    have h_two_over : (2:ℚ)/2^K = (1:ℚ)/2^(N+3) := by
+      have : (2:ℚ)/2^(N+4) = (1:ℚ)/2^(N+3) := by
+        field_simp [pow_succ]; ring
+      simpa [hK_expr]
+    have h_gap_half_K1 :
+        (1:ℚ)/2^(N+2) < (y_pre.approx (K+1) - x_pre.approx (K+1))/2 := by
+      have h_mul := (mul_lt_mul_of_pos_right h_gap_stable (by norm_num : 0 < (1:ℚ)/2))
+      simpa [one_div, pow_succ, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc]
+        using h_mul
     have h_core_margin :
-        (1 : ℚ) / 2 ^ (N + 3)
-          < y_pre.approx (K + 1)
-              - ((x_pre.approx (K + 1) + y_pre.approx (K + 1)) / 2)
-              - (1 : ℚ) / 2 ^ (N + 3) := by
-      have hstep := sub_lt_sub_right h_gap_half_K1 ((2 : ℚ) / 2 ^ K)
-      have h_rewrite :
-        y_pre.approx (K + 1)
-            - ((x_pre.approx (K + 1) + y_pre.approx (K + 1)) / 2)
-          = (y_pre.approx (K + 1) - x_pre.approx (K + 1)) / 2 := by
+        (1:ℚ)/2^(N+3)
+          < y_pre.approx (K+1)
+              - ( (x_pre.approx (K+1)+y_pre.approx (K+1))/2 )
+              - (1:ℚ)/2^(N+3) := by
+      have hrewrite :
+          y_pre.approx (K+1) - ((x_pre.approx (K+1)+y_pre.approx (K+1))/2)
+            = (y_pre.approx (K+1) - x_pre.approx (K+1))/2 := by
         field_simp; ring
-      simp_all only [one_div, lt_add_neg_iff_add_lt, tsub_le_iff_right, ge_iff_le, K, M, m_K]
+      have h_sub : (1:ℚ)/2^(N+2) - (1:ℚ)/2^(N+3) = (1:ℚ)/2^(N+3) := by
+        field_simp [pow_succ]; ring
+      have h := sub_lt_sub_right h_gap_half_K1 ((1:ℚ)/2^(N+3))
+      calc
+        (1:ℚ)/2^(N+3)
+            = (1:ℚ)/2^(N+2) - (1:ℚ)/2^(N+3) := h_sub.symm
+        _ < (y_pre.approx (K+1) - x_pre.approx (K+1))/2 - (1:ℚ)/2^(N+3) := h
+        _ = y_pre.approx (K+1)
+              - ((x_pre.approx (K+1)+y_pre.approx (K+1))/2)
+              - (1:ℚ)/2^(N+3) := by
+              simp [sub_eq_add_neg, add_comm]
+              ring_nf
     have h_margin :
-        (1 : ℚ) / 2 ^ M < y_pre.approx (K + 1) - z_pre.approx (K + 1) := by
+        (1:ℚ)/2^M < y_pre.approx (K+1) - z_pre.approx (K+1) := by
       have h_comp :
-          y_pre.approx (K + 1)
-            - ((x_pre.approx (K + 1) + y_pre.approx (K + 1)) / 2 + (2 : ℚ) / 2 ^ K)
-            ≤ y_pre.approx (K + 1) - z_pre.approx (K + 1) :=
+          y_pre.approx (K+1)
+            - ((x_pre.approx (K+1)+y_pre.approx (K+1))/2 + (2:ℚ)/2^K)
+              ≤ y_pre.approx (K+1) - z_pre.approx (K+1) :=
         sub_le_sub_left hz_up' _
-      have : (1 : ℚ) / 2 ^ (N + 3)
-          < y_pre.approx (K + 1)
-              - ((x_pre.approx (K + 1) + y_pre.approx (K + 1)) / 2 + (2 : ℚ) / 2 ^ K) := by
+      have h_base :
+          (1:ℚ)/2^(N+3) <
+            y_pre.approx (K+1)
+              - ((x_pre.approx (K+1)+y_pre.approx (K+1))/2 + (2:ℚ)/2^K) := by
         simpa [sub_eq_add_neg, add_comm, add_left_comm, add_assoc, h_two_over]
           using h_core_margin
-      have : (1 : ℚ) / 2 ^ (N + 3) < y_pre.approx (K + 1) - z_pre.approx (K + 1) :=
-        lt_of_lt_of_le this h_comp
-      simpa [M] using this
-    simp; grind
+      have h_trans := lt_of_lt_of_le h_base h_comp
+      simpa [M] using h_trans
+    -- Provide witness M
+    refine ⟨M, ?_⟩
+    -- Expand and apply h_margin directly
+    have h_expand :
+      (y_pre.add z_pre.neg).approx (M+1) =
+        y_pre.approx (K+1) - z_pre.approx (K+1) := by
+      have hK1 : K + 1 = M + 2 := by simp [K,M]
+      dsimp [CReal.Pre.add, CReal.Pre.neg]
+      simp [hK1, sub_eq_add_neg, add_comm]
+      ring_nf
+    have h_witness :
+      (1 : ℚ)/2^M < (y_pre.add z_pre.neg).approx (M+1) := by
+      simpa [h_expand]
+        using h_margin
+    exact h_witness
   | inr h_gt =>
+    -- FIXED second branch
     left
     apply (lt_iff_pos ⟦x_pre⟧ ⟦z_pre⟧).mpr
     dsimp [Pos, CReal.Pre.Pos]
-    use M
-    dsimp [CReal.Pre.add, CReal.Pre.neg]
-    have h_diff_gt_half : (y_pre.approx K - x_pre.approx K) / 2 < z_pre.approx K - x_pre.approx K := by
+    -- Midpoint inequality gives half-gap at index K
+    have h_diff_gt_half :
+        (y_pre.approx K - x_pre.approx K)/2 < z_pre.approx K - x_pre.approx K := by
       calc
-        (y_pre.approx K - x_pre.approx K) / 2
-          = (x_pre.approx K + y_pre.approx K) / 2 - x_pre.approx K := by ring
-        _ < z_pre.approx K - x_pre.approx K := by
-          exact sub_lt_sub_right h_gt _
-    have h_gap_half : 1/2^(N+2) < (y_pre.approx K - x_pre.approx K) / 2 := by
-      have hN2_le_K : N + 2 ≤ K := by
-        simp [K, M]
-      have hy_reg := (abs_sub_le_iff).1 (by simpa using y_pre.is_regular (N + 2) K hN2_le_K)
-      have hx_reg := (abs_sub_le_iff).1 (by simpa using x_pre.is_regular (N + 2) K hN2_le_K)
-      have hy_ge : y_pre.approx K ≥ y_pre.approx (N + 2) - 1 / 2 ^ (N + 2) := by
-        simp; grind
-      have hx_le : x_pre.approx K ≤ x_pre.approx (N + 2) + 1 / 2 ^ (N + 2) := by
-        simp; grind
-      have h_yx : y_pre.approx K - x_pre.approx K
-                    ≥ (y_pre.approx (N + 2) - x_pre.approx (N + 2)) - 2 / 2 ^ (N + 2) := by
-        simp; grind
-      have h_core : (y_pre.approx (N + 2) - x_pre.approx (N + 2)) - 2 / 2 ^ (N + 2)
-                      > 1 / 2 ^ (N + 1) := by
-        have : (1 : ℚ) / 2 ^ N - 2 / 2 ^ (N + 2) = 1 / 2 ^ (N + 1) := by
-          field_simp [pow_succ]; ring
-        have := sub_lt_sub_right hN (2 / 2 ^ (N + 2))
-        simp; grind
-      have this_lt : (1 : ℚ) / 2 ^ (N + 1) < y_pre.approx K - x_pre.approx K :=
-        lt_of_lt_of_le h_core h_yx
-      have hhalf := (div_lt_div_of_pos_right this_lt (by norm_num : 0 < (2 : ℚ)))
-      simpa [one_div, pow_succ, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using hhalf
-    have h_final : 1/2^(N+2) < z_pre.approx K - x_pre.approx K :=
+        (y_pre.approx K - x_pre.approx K)/2
+            = (x_pre.approx K + y_pre.approx K)/2 - x_pre.approx K := by ring
+        _ < z_pre.approx K - x_pre.approx K := sub_lt_sub_right h_gt _
+    -- Regularity from N+2 to K
+    have hN2_le_K : N + 2 ≤ K := by simp [K,M]
+    have hy_reg := (abs_sub_le_iff).1 (by simpa using y_pre.is_regular (N+2) K hN2_le_K)
+    have hx_reg := (abs_sub_le_iff).1 (by simpa using x_pre.is_regular (N+2) K hN2_le_K)
+    -- Upper / lower shifts
+    have hy_ge : y_pre.approx K ≥ y_pre.approx (N+2) - 1/2^(N+2) := by
+      have : y_pre.approx (N+2) - y_pre.approx K ≤ 1/2^(N+2) := by
+        simpa [one_div] using hy_reg.left
+      linarith
+    have hx_le : x_pre.approx K ≤ x_pre.approx (N+2) + 1/2^(N+2) := by
+      have : x_pre.approx K - x_pre.approx (N+2) ≤ 1/2^(N+2) := by
+        simpa [one_div] using hx_reg.right
+      linarith
+    -- Lower bound on gap at K in terms of gap at N+2
+    have h_yx :
+        y_pre.approx K - x_pre.approx K ≥
+          (y_pre.approx (N+2) - x_pre.approx (N+2)) - 2 / 2 ^ (N+2) := by
+      calc
+        y_pre.approx K - x_pre.approx K
+            ≥ (y_pre.approx (N+2) - 1/2^(N+2)) - (x_pre.approx (N+2) + 1/2^(N+2)) :=
+              sub_le_sub hy_ge hx_le
+        _ = (y_pre.approx (N+2) - x_pre.approx (N+2)) - 2/2^(N+2) := by ring
+    -- Core gap lower bound from original witness hN
+    have h_core :
+        (y_pre.approx (N+2) - x_pre.approx (N+2)) - 2 / 2 ^ (N + 2)
+          > 1 / 2 ^ (N + 1) := by
+      -- Base inequality from the hypothesis hN (index shift already expanded).
+      have hyx : 1 / 2 ^ N < y_pre.approx (N+2) - x_pre.approx (N+2) := by
+        simpa [sub_eq_add_neg, add_comm, add_left_comm, add_assoc] using hN
+      -- Express 1 / 2^N directly as the sum of two copies of 1 / 2^(N+1).
+      have h_split : (1 : ℚ) / 2 ^ N = (1 : ℚ) / 2 ^ (N + 1) + (1 : ℚ) / 2 ^ (N + 1) := by
+        -- 1/2^N = 2/2^(N+1) and 2/2^(N+1) = (1/2^(N+1))+(1/2^(N+1))
+        field_simp [pow_succ]; ring
+      -- Rewrite the left side of hyx via h_split to get a “double–half” gap.
+      have h_big :
+          (1 : ℚ) / 2 ^ (N + 1) + (1 : ℚ) / 2 ^ (N + 1)
+            < y_pre.approx (N+2) - x_pre.approx (N+2) := by
+        simpa [h_split]
+          using hyx
+      -- Subtract one 1/2^(N+1) from both sides.
+      have h_goal :
+          (y_pre.approx (N+2) - x_pre.approx (N+2)) - (1 : ℚ) / 2 ^ (N + 1)
+            > (1 : ℚ) / 2 ^ (N + 1) := by
+        linarith
+      -- 2 / 2^(N+2) = 1 / 2^(N+1).
+      have h_two : (2 : ℚ) / 2 ^ (N + 2) = (1 : ℚ) / 2 ^ (N + 1) := by
+        -- 2^(N+2) = 2^(N+1)*2
+        simp [pow_succ, mul_comm]; ring_nf
+      -- Replace 2/2^(N+2) with 1/2^(N+1).
+      simpa [h_two] using h_goal
+      
+    have h_yx_strong :
+        1 / 2 ^ (N + 1) < y_pre.approx K - x_pre.approx K :=
+      lt_of_lt_of_le h_core h_yx
+    -- Half-gap lower bound
+    have h_gap_half :
+        1 / 2 ^ (N + 2) < (y_pre.approx K - x_pre.approx K)/2 := by
+      have hpos : (0:ℚ) < (1:ℚ)/2 := by norm_num
+      have := mul_lt_mul_of_pos_right h_yx_strong hpos
+      simpa [one_div, pow_succ, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using this
+    -- Pass half-gap through midpoint inequality
+    have h_final_at_K :
+        1 / 2 ^ (N + 2) < z_pre.approx K - x_pre.approx K :=
       lt_trans h_gap_half h_diff_gt_half
+    -- Shift to index K+1
     have hz_pair :=
       (abs_sub_le_iff).1 (by simpa using z_pre.is_regular K (K+1) (Nat.le_succ _))
     have hx_pair :=
       (abs_sub_le_iff).1 (by simpa using x_pre.is_regular K (K+1) (Nat.le_succ _))
-    have hz_lower : z_pre.approx (K + 1) ≥ z_pre.approx K - 1 / 2 ^ K := by
-      have : z_pre.approx K - z_pre.approx (K + 1) ≤ 1 / 2 ^ K := by simp; grind
+    have hz_lower : z_pre.approx (K+1) ≥ z_pre.approx K - 1/2^K := by
+      have : z_pre.approx K - z_pre.approx (K+1) ≤ 1/2^K := by
+        simpa [one_div] using hz_pair.left
       linarith
-    have hx_upper : x_pre.approx (K + 1) ≤ x_pre.approx K + 1 / 2 ^ K := by
-      have : x_pre.approx (K + 1) - x_pre.approx K ≤ 1 / 2 ^ K := by simp; grind
+    have hx_upper : x_pre.approx (K+1) ≤ x_pre.approx K + 1/2^K := by
+      have : x_pre.approx (K+1) - x_pre.approx K ≤ 1/2^K := by
+        simpa [one_div] using hx_pair.right
       linarith
+    have h_lower_shift :
+        z_pre.approx (K+1) - x_pre.approx (K+1)
+          ≥ z_pre.approx K - x_pre.approx K - 2/2^K := by
+      calc
+        z_pre.approx (K+1) - x_pre.approx (K+1)
+            ≥ (z_pre.approx K - 1/2^K) - (x_pre.approx K + 1/2^K) :=
+              sub_le_sub hz_lower hx_upper
+        _ = z_pre.approx K - x_pre.approx K - 2/2^K := by ring
+    -- Express 2/2^K as 1/2^(N+3)
+    have hK_expr : K = N + 4 := by simp [K,M]
+    have h_two_over : (2:ℚ)/2^K = (1:ℚ)/2^(N+3) := by
+      have : (2:ℚ)/2^(N+4) = (1:ℚ)/2^(N+3) := by
+        field_simp [pow_succ]; ring
+      simpa [hK_expr]
+    -- Subtract (2/2^K) from inequality at K
+    have base_shift :
+      1 / 2 ^ (N + 2) - 2 / 2 ^ K < z_pre.approx K - x_pre.approx K - 2 / 2 ^ K := by
+      simpa [sub_eq_add_neg, add_comm, add_left_comm, add_assoc]
+        using (sub_lt_sub_right h_final_at_K ((2:ℚ)/2^K))
+    -- Rewrite LHS to 1/2^(N+3) using the previously obtained h_two_over (ensure all literals are ℚ).
+    have h_left_rewrite :
+        (1 : ℚ) / 2 ^ (N + 2) - (2 : ℚ) / 2 ^ K = (1 : ℚ) / 2 ^ (N + 3) := by
+      -- coerce all numerals to ℚ
+      have h2 : (2 : ℚ) / (2 : ℚ) ^ K = (1 : ℚ) / (2 : ℚ) ^ (N + 3) := h_two_over
+      -- (1/2^(N+2) - 1/2^(N+3)) = 1/2^(N+3)
+      have h_sub : (1:ℚ)/2^(N+2) - (1:ℚ)/2^(N+3) = (1:ℚ)/2^(N+3) := by
+        field_simp [one_div, pow_succ]; ring
+      calc
+        (1 : ℚ) / 2 ^ (N + 2) - (2 : ℚ) / 2 ^ K
+            = (1 : ℚ) / 2 ^ (N + 2) - (1 : ℚ) / 2 ^ (N + 3) := by rw [h2]
+        _ = (1 : ℚ) / 2 ^ (N + 3) := h_sub
+    -- Derive the needed shifted inequality directly from h_final_at_K (avoids fragile rewrites).
+    have h_at_K1 :
+        1 / 2 ^ (N + 3) < z_pre.approx K - x_pre.approx K - 2 / 2 ^ K := by
+      -- We want: 1/2^(N+3) < (gap) - 2/2^K; with 2/2^K = 1/2^(N+3),
+      -- it's equivalent to: 2*(1/2^(N+3)) < gap, i.e. 1/2^(N+2) < gap, which is h_final_at_K.
+      have h_sum_halves :
+          (1:ℚ)/2^(N+3) + (1:ℚ)/2^(N+3) = 1 / 2 ^ (N + 2) := by
+        simpa [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using two_halves_to_succ (N + 1)
+      -- Rewrite the gap inequality into a + a < gap
+      have h_gap' : (1:ℚ)/2^(N+3) + (1:ℚ)/2^(N+3) < z_pre.approx K - x_pre.approx K := by
+        -- We have: h_sum_halves : 1/2^(N+3) + 1/2^(N+3) = 1/2^(N+2)
+        -- and this : 1/2^(N+2) < z_pre.approx K - x_pre.approx K
+        rw [h_sum_halves]
+        simp_all only [one_div, lt_add_neg_iff_add_lt, tsub_le_iff_right, add_le_add_iff_right, le_add_iff_nonneg_right,
+          zero_le, ge_iff_le, gt_iff_lt, sub_lt_sub_iff_right, K, M, m_K]
+      -- From a + a < G deduce a < G - a
+      have h_goal :
+          (1:ℚ)/2^(N+3) < z_pre.approx K - x_pre.approx K - 1/2^(N+3) := by
+        have : (1:ℚ)/2^(N+3) + (1:ℚ)/2^(N+3) < z_pre.approx K - x_pre.approx K := h_gap'
+        linarith
+      -- Replace 2/2^K with 1/2^(N+3) (h_two_over) in the target.
+      simpa [h_two_over] using h_goal
+    -- Lift to K+1 using h_lower_shift
     have h_step :
-        (1 : ℚ) / 2 ^ (N + 3) < z_pre.approx (K + 1) - x_pre.approx (K + 1) := by
-      have h_lower :
-          z_pre.approx (K + 1) - x_pre.approx (K + 1)
-            ≥ z_pre.approx K - x_pre.approx K - 2 / 2 ^ K := by
-        calc
-          z_pre.approx (K + 1) - x_pre.approx (K + 1)
-              ≥ (z_pre.approx K - 1 / 2 ^ K) - (x_pre.approx K + 1 / 2 ^ K) := by
-                    exact sub_le_sub hz_lower hx_upper
-          _ = z_pre.approx K - x_pre.approx K - 2 / 2 ^ K := by
-                    ring
-      have h_two_over : (2 : ℚ) / 2 ^ K = (1 : ℚ) / 2 ^ (N + 3) := by
-        have hK : K = N + 4 := by
-          simp [K, M]
-        have hpow : (2 : ℚ) ^ (N + 4) = (2 : ℚ) ^ (N + 3) * 2 := by
-          simp [pow_succ]
-        have : (2 : ℚ) / 2 ^ (N + 4) = (1 : ℚ) / 2 ^ (N + 3) := by
-          field_simp [hpow]; ring
-        simpa [hK] using this
-      have base := sub_lt_sub_right h_final ((2 : ℚ) / 2 ^ K)
-      have : (1 : ℚ) / 2 ^ (N + 3) < z_pre.approx K - x_pre.approx K - 2 / 2 ^ K := by
-        have h_sub_id : (1 : ℚ) / 2 ^ (N + 2) - (1 : ℚ) / 2 ^ (N + 3) = (1 : ℚ) / 2 ^ (N + 3) := by
-          simpa using two_halves_to_succ_sub (N + 1)
-        simp; grind
-      exact lt_of_lt_of_le this h_lower
-    have h_goal : 1 / 2 ^ M < z_pre.approx (M + 1 + 1) + -x_pre.approx (M + 1 + 1) := by
-      simpa [M, K, add_comm, add_left_comm, add_assoc, sub_eq_add_neg] using h_step
-    exact h_goal
+        1 / 2 ^ (N + 3) < z_pre.approx (K+1) - x_pre.approx (K+1) :=
+      lt_of_lt_of_le h_at_K1 h_lower_shift
+    -- Strengthen exponent to M (M = N+3 here)
+    have h_step_stronger :
+        1 / 2 ^ M < z_pre.approx (K+1) - x_pre.approx (K+1) := by
+      have hM : M = N + 3 := rfl
+      simpa [hM] using h_step
+    refine ⟨M, ?_⟩
+    -- Expand (z - x) at index M+1
+    have h_expand :
+      (z_pre.add x_pre.neg).approx (M+1) =
+        z_pre.approx (K+1) - x_pre.approx (K+1) := by
+      have hK1 : K + 1 = M + 2 := by simp [K,M]
+      dsimp [CReal.Pre.add, CReal.Pre.neg]
+      simp [hK1, sub_eq_add_neg]
+    simpa [h_expand] using h_step_stronger
 
 -- A simp lemma to rewrite the limit representative at any index
-@[simp] lemma lim_pre_approx_simp (s : RCauSeq) (t : ℕ) :
+@[simp] 
+lemma lim_pre_approx_simp (s : RCauSeq) (t : ℕ) :
   (lim_pre s).approx t = (s.pre (t + 2)).approx (t + 2) := rfl
 
 -- Collapse 1/2^n + 1/2^(n-1) + 1/2^n to 1/2^(n-2) (for n ≥ 2)
@@ -3828,7 +3999,7 @@ private lemma three_terms_collapse_aux (m : ℕ) :
         = ((1 : ℚ) / 2 ^ (m + 2) + 1 / 2 ^ (m + 2)) + 1 / 2 ^ (m + 1) := by
           simp [add_comm, add_left_comm]
     _ = 1 / 2 ^ (m + 1) + 1 / 2 ^ (m + 1) := by
-          simp [add_comm]; grind
+          simp [add_comm]; ring_nf
     _ = 1 / 2 ^ m := two_halves_to_pred m
 
 lemma three_terms_collapse (n : ℕ) (hn : 2 ≤ n) :
@@ -3839,9 +4010,9 @@ lemma three_terms_collapse (n : ℕ) (hn : 2 ≤ n) :
   have hm1 : m + 1 = n - 1 := by
     apply Nat.succ_injective
     have h_left : Nat.succ (m + 1) = n := by
-      simp [m, Nat.add_comm]; grind
+      simp [m, Nat.add_comm]; simp +arith [*]
     have h_right : Nat.succ (n - 1) = n := Nat.succ_pred_eq_of_pos hn_pos
-    simp; grind
+    simp_all only [Nat.sub_add_cancel, Nat.succ_eq_add_one, m]
   have hm0 : m = n - 2 := rfl
   simpa [m, hm0, hm_add, hm1, add_comm, add_left_comm, add_assoc] using
     three_terms_collapse_aux m
@@ -3895,7 +4066,7 @@ lemma diff_at_sync_bound (s : RCauSeq) (n : ℕ) (hn : 2 ≤ n) :
       _ = (1 : ℚ) / 2 ^ (n - 2) := by
             simpa [add_comm, add_left_comm, add_assoc] using h_three
   have : |A - L| ≤ (1 : ℚ) / 2 ^ (n - 2) := by
-    simp; grind
+    simp; simp_all
   exact this
 
 lemma lift_sync_bound_to_all_indices

@@ -38,7 +38,8 @@ The network uses Gibbs sampling to generate samples from the underlying probabil
 -/
 open Finset Matrix NeuralNetwork State ENNReal Real PMF
 
-variable {R U : Type} [Field R] [LinearOrder R] [IsStrictOrderedRing R] [DecidableEq U] [Fintype U] [Nonempty U]
+variable {R U : Type} [Field R] [LinearOrder R] [IsStrictOrderedRing R]
+  [DecidableEq U] [Fintype U] [Nonempty U]
 
 omit [IsStrictOrderedRing R] in
 lemma BM_pact_of_HNfact (θ val : R) :
@@ -70,7 +71,8 @@ abbrev BoltzmannMachine (R U : Type) [Field R] [LinearOrder R] [IsStrictOrderedR
   pw := fun w => w.IsSymm ∧ ∀ u, w u u = 0,
   κ1 := fun _ => 0, κ2 := fun _ => 1,
   fnet := fun u w_u pred _ => HNfnet u w_u pred,
-  fact := fun u (_current_act_val : R) (net_input_val : R) (θ_vec : Vector R 1) => HNfact (θ_vec.get 0) net_input_val,  fout := fun _ act => act,
+  fact := fun u (_current_act_val : R) (net_input_val : R) (θ_vec : Vector R 1) =>
+     HNfact (θ_vec.get 0) net_input_val,  fout := fun _ act => act,
   pact := fun act => act = (1 : R) ∨ act = (-1 : R), -- This is the pact for BoltzmannMachine
   hpact := fun _ _ _ _ _ _ _ _ => BM_pact_of_HNfact _ _
 }
@@ -78,7 +80,8 @@ abbrev BoltzmannMachine (R U : Type) [Field R] [LinearOrder R] [IsStrictOrderedR
 /--
 Parameters for a Boltzmann Machine.
 -/
-structure ParamsBM (R U : Type) [Field R] [LinearOrder R] [IsStrictOrderedRing R] [DecidableEq U] [Fintype U] [Nonempty U] where
+structure ParamsBM (R U : Type) [Field R] [LinearOrder R] [IsStrictOrderedRing R]
+    [DecidableEq U] [Fintype U] [Nonempty U] where
   /-- The weight matrix of the Boltzmann Machine. -/
   w : Matrix U U R
   /-- Proof that the weight matrix satisfies the properties required by `BoltzmannMachine.pw`. -/
@@ -94,7 +97,8 @@ structure ParamsBM (R U : Type) [Field R] [LinearOrder R] [IsStrictOrderedRing R
 `StateBM` is an alias for the state of a `BoltzmannMachine`.
 It represents the activation values of all neurons in the network.
 -/
-abbrev StateBM (R U : Type) [Field R] [LinearOrder R] [IsStrictOrderedRing R] [DecidableEq U] [Fintype U] [Nonempty U] :=
+abbrev StateBM (R U : Type) [Field R] [LinearOrder R] [IsStrictOrderedRing R]
+    [DecidableEq U] [Fintype U] [Nonempty U] :=
   (BoltzmannMachine R U).State
 
 namespace BoltzmannMachine

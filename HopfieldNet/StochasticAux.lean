@@ -255,7 +255,7 @@ lemma pmf_filter_update_neuron
   by_cases h1 : val = 1
   · simp only [h1]
     ext b
-    simp only [mem_filter, mem_univ, true_and, mem_singleton]
+    simp only [mem_filter, mem_univ, true_and]
     rw [@bool_update_eq_iff]
     simp only [and_true, ↓reduceIte, mem_singleton, or_iff_left_iff_imp, and_imp]
     cases b
@@ -263,9 +263,9 @@ lemma pmf_filter_update_neuron
       norm_num
     · simp only [Bool.true_eq_false, implies_true]
   · by_cases h2 : val = -1
-    · simp only [h1, h2]
+    · simp only [h2]
       ext b
-      simp only [mem_filter, mem_univ, true_and, mem_singleton]
+      simp only [mem_filter, mem_univ, true_and]
       rw [@bool_update_eq_iff]
       simp only [and_true, ↓reduceIte]
       cases b
@@ -339,7 +339,7 @@ lemma pmf_map_binary_state
       have hcond : (f b = f b') ↔ (b = b') := h_iff b'
       simp only [hcond]
     rw [h_eq]
-    simp [h_eq, Finset.sum_ite_eq]
+    simp [Finset.sum_ite_eq]
   rw [@tsum_bool]
   simp only [PMF.ofFintype_apply]
   cases b
@@ -419,7 +419,7 @@ lemma gibbs_bool_to_state_map_positive
   by_cases h_v : v = u
   · rw [h_v]
     exact ite_congr rfl (fun a ↦ h_val) (congrFun rfl)
-  · simp only [h_v, if_neg]
+  · simp only [h_v]
     exact rfl
 
 @[simp]
@@ -463,7 +463,7 @@ lemma single_site_difference_as_update (s s' : (HopfieldNetwork R U).State) (u :
   by_cases hv : v = u
   · rw [hv]
     unfold NN.State.updateNeuron
-    simp only [if_pos rfl]
+    simp only
     have _ := h_diff_at_u
     exact rfl
   · unfold NN.State.updateNeuron
