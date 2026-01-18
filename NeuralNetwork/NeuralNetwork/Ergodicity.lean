@@ -1,5 +1,6 @@
 import MCMC.PF.LinearAlgebra.Matrix.PerronFrobenius.Stochastic
 import MCMC.Finite.Core
+import MCMC.Finite.toKernel
 import NeuralNetwork.NeuralNetwork.DetailedBalanceBM
 
 set_option linter.unusedSectionVars false
@@ -836,5 +837,200 @@ theorem RSrow_exists_unique_stationary_distribution :
     (n := NN.State)
     (h_stoch := RSrow_isStochastic (spec:=spec) (p:=p) (T:=T))
     (h_irred := RSrow_irred (spec:=spec) (p:=p) (T:=T))
+
+/-!
+## Identifying the stationary distribution as the Boltzmann law
+
+We already have:
+- kernel reversibility of `randomScanKernel` w.r.t. the Boltzmann measure `μProd` (in `DetailedBalanceBM`),
+- uniqueness of the stationary distribution for `RSrow` (via `MCMC.Finite`).
+
+Here we connect the two by showing that:
+1. the matrix-induced kernel for `RSrow` agrees with `randomScanKernel`,
+2. the vector-to-measure for the Boltzmann probability vector agrees with `μProd`,
+3. hence the Boltzmann vector is stationary for `RSrow`,
+4. hence it is the unique stationary distribution.
+-/
+
+section IdentifyStationary
+
+open MeasureTheory ProbabilityTheory
+open scoped ENNReal BigOperators
+
+variable (NN : NeuralNetwork ℝ U σ)
+  [Fintype NN.State] [DecidableEq NN.State] [Nonempty NN.State]
+  [TwoStateNeuralNetwork NN] [TwoStateExclusive NN]
+  (spec : TwoState.EnergySpec' (NN:=NN)) (p : Params NN) (T : Temperature)
+
+local notation "κ" => randomScanKernel (NN:=NN) spec p T
+local notation "μBoltz" => (HopfieldBoltzmann.CEparams (NN:=NN) (spec:=spec) p).μProd T
+
+-- Discrete measurable structure (all sets measurable).
+local instance : MeasurableSpace NN.State := ⊤
+local instance : MeasurableSingletonClass NN.State := ⟨fun _ => trivial⟩
+
+/-- The Boltzmann probability vector as an element of the standard simplex. -/
+noncomputable def πBoltzVec : stdSimplex ℝ NN.State :=
+{ val := fun s => (HopfieldBoltzmann.CEparams (NN:=NN) (spec:=spec) p).probability T s
+  property := by
+    refine ⟨?_, ?_⟩
+    · intro s
+      -- nonnegativity of probabilities (finite state space)
+      simpa using
+        (probability_nonneg_finite
+          (𝓒:=HopfieldBoltzmann.CEparams (NN:=NN) (spec:=spec) p) (T:=T) (i:=s))
+    · -- normalization
+      simpa using
+        (sum_probability_eq_one
+          (𝓒:=HopfieldBoltzmann.CEparams (NN:=NN) (spec:=spec) p) (T:=T)) }
+
+private lemma measure_eq_sum_singletons (m : Measure NN.State) (S : Set NN.State) :
+    m S = ∑ s in (Finset.univ.filter (fun s => s ∈ S)), m {s} := by
+  classical
+  -- write `S` as a disjoint union of its singletons (finite)
+  have hU :
+      (⋃ s ∈ (Finset.univ.filter (fun s => s ∈ S)), ({s} : Set NN.State)) = S := by
+    ext x
+    constructor
+    · intro hx
+      rcases mem_iUnion.1 hx with ⟨s, hs⟩
+      rcases mem_iUnion.1 hs with ⟨hsF, hxS⟩
+      have : x ∈ ({s} : Set NN.State) := hxS
+      simpa [Set.mem_singleton_iff] using this ▸ (Finset.mem_filter.1 hsF).2
+    · intro hxS
+      refine mem_iUnion.2 ?_
+      refine ⟨x, mem_iUnion.2 ?_⟩
+      have hxF : x ∈ (Finset.univ.filter (fun s => s ∈ S)) := by
+        simp [hxS]
+      refine ⟨hxF, ?_⟩
+      simp
+  -- disjointness of singleton family
+  have hdisj :
+      PairwiseDisjoint (↑(Finset.univ.filter (fun s => s ∈ S)) : Set NN.State)
+        (fun s : NN.State => ({s} : Set NN.State)) := by
+    intro a ha b hb hab
+    exact Set.disjoint_singleton.2 hab
+  -- apply finite disjoint union measure
+  simpa [hU] using
+    (measure_biUnion_finset (μ:=m) (s := (Finset.univ.filter (fun s => s ∈ S)))
+      (f := fun s : NN.State => ({s} : Set NN.State)) hdisj
+      (by intro s hs; simp))
+
+private lemma vecToMeasure_singleton (s : NN.State) :
+    MCMC.Finite.vecToMeasure (πBoltzVec (NN:=NN) (spec:=spec) (p:=p) (T:=T)) {s}
+      = ENNReal.ofReal ((πBoltzVec (NN:=NN) (spec:=spec) (p:=p) (T:=T)).val s) := by
+  classical
+  -- unfold the finite sum of Diracs
+  simp [MCMC.Finite.vecToMeasure, measurableSet_singleton, Measure.dirac_apply']
+  -- reduce the sum to the singleton term
+  rw [Finset.sum_eq_single s]
+  · simp
+  · intro t _ ht
+    simp [ht]
+  · simp
+
+private lemma μBoltz_singleton (s : NN.State) :
+    μBoltz (NN:=NN) (spec:=spec) (p:=p) (T:=T) {s}
+      = ENNReal.ofReal ((πBoltzVec (NN:=NN) (spec:=spec) (p:=p) (T:=T)).val s) := by
+  classical
+  -- `μProd_singleton` lemma from `DetailedBalanceBM` (via `CanonicalEnsemble` namespace)
+  simpa [πBoltzVec, μBoltz, HopfieldBoltzmann.CEparams] using
+    (DetailedBalance.CanonicalEnsemble.μProd_singleton
+      (𝓒 := HopfieldBoltzmann.CEparams (NN := NN) (spec:=spec) p)
+      (T := T) (i := s))
+
+private lemma vecToMeasure_eq_μBoltz :
+    MCMC.Finite.vecToMeasure (πBoltzVec (NN:=NN) (spec:=spec) (p:=p) (T:=T))
+      = μBoltz (NN:=NN) (spec:=spec) (p:=p) (T:=T) := by
+  classical
+  ext S hS
+  -- both are finite sums over singleton masses, and agree on singletons
+  have h1 :=
+    measure_eq_sum_singletons
+      (NN:=NN) (m := MCMC.Finite.vecToMeasure (πBoltzVec (NN:=NN) (spec:=spec) (p:=p) (T:=T))) S
+  have h2 :=
+    measure_eq_sum_singletons
+      (NN:=NN) (m := μBoltz (NN:=NN) (spec:=spec) (p:=p) (T:=T)) S
+  -- rewrite singleton terms
+  simp [h1, h2, vecToMeasure_singleton (NN:=NN) (spec:=spec) (p:=p) (T:=T),
+        μBoltz_singleton (NN:=NN) (spec:=spec) (p:=p) (T:=T)]
+
+private lemma matrixToKernel_singleton
+    {P : Matrix NN.State NN.State ℝ} (hP : MCMC.Finite.IsStochastic P) (i j : NN.State) :
+    (MCMC.Finite.matrixToKernel P hP) i {j} = ENNReal.ofReal (P i j) := by
+  classical
+  -- same computation as `MCMC.Finite.toKernel.kernel_eval_singleton` (but that lemma is private)
+  have hmeas : MeasurableSet ({j} : Set NN.State) := measurableSet_singleton j
+  -- unfold `matrixToKernel` and evaluate the finite sum of Diracs
+  simp [MCMC.Finite.matrixToKernel, ProbabilityTheory.Kernel.ofFunOfCountable_apply,
+        hmeas, Measure.dirac_apply', Finset.sum_eq_single j]
+
+private lemma κ_singleton_ne_top (i j : NN.State) : (κ i {j}) ≠ (⊤ : ℝ≥0∞) := by
+  -- {j} ⊆ univ, and κ i univ = 1
+  have hle : (κ i {j}) ≤ (κ i (Set.univ : Set NN.State)) :=
+    measure_mono (by intro x hx; trivial)
+  have huniv : (κ i (Set.univ : Set NN.State)) = 1 := by
+    -- Markov kernel property: probability measure
+    haveI : ProbabilityTheory.Kernel.IsMarkovKernel (κ) := by infer_instance
+    simpa using (ProbabilityTheory.Kernel.measure_univ (κ := κ) i)
+  have : (κ i {j}) ≤ (1 : ℝ≥0∞) := by simpa [huniv] using hle
+  exact ne_of_lt (lt_of_le_of_lt this (by simp))
+
+private lemma matrixToKernel_RSrow_eq_κ :
+    MCMC.Finite.matrixToKernel
+        (RSrow (NN:=NN) (spec:=spec) p T)
+        (RSrow_isStochastic (NN:=NN) (spec:=spec) (p:=p) (T:=T))
+      = κ := by
+  classical
+  ext i S hS
+  -- reduce to singleton masses and use finite additivity via `measure_eq_sum_singletons`
+  have h1 :=
+    measure_eq_sum_singletons
+      (NN:=NN)
+      (m := (MCMC.Finite.matrixToKernel
+        (RSrow (NN:=NN) (spec:=spec) p T)
+        (RSrow_isStochastic (NN:=NN) (spec:=spec) (p:=p) (T:=T)) i))
+      S
+  have h2 :=
+    measure_eq_sum_singletons (NN:=NN) (m := (κ i)) S
+  -- rewrite singleton values on both sides
+  simp [h1, h2, matrixToKernel_singleton, RSrow, RScol, Matrix.transpose_apply,
+        ENNReal.ofReal_toReal (κ_singleton_ne_top (NN:=NN) (spec:=spec) (p:=p) (T:=T) i),
+        hS]
+
+theorem πBoltzVec_is_stationary_RSrow :
+    MCMC.Finite.IsStationary (RSrow (NN:=NN) (spec:=spec) p T)
+      (πBoltzVec (NN:=NN) (spec:=spec) (p:=p) (T:=T)) := by
+  classical
+  -- use the kernel invariance characterization
+  have hP : MCMC.Finite.IsStochastic (RSrow (NN:=NN) (spec:=spec) p T) :=
+    RSrow_isStochastic (NN:=NN) (spec:=spec) (p:=p) (T:=T)
+  -- kernel invariance from reversibility
+  have hrev :
+      ProbabilityTheory.Kernel.IsReversible (κ) (μBoltz (NN:=NN) (spec:=spec) (p:=p) (T:=T)) :=
+    DetailedBalance.randomScanKernel_reversible (NN:=NN) (spec:=spec) (p:=p) (T:=T)
+  haveI : ProbabilityTheory.Kernel.IsMarkovKernel (κ) := by infer_instance
+  have hinvκ : ProbabilityTheory.Kernel.Invariant (κ) (μBoltz (NN:=NN) (spec:=spec) (p:=p) (T:=T)) :=
+    hrev.invariant
+  -- transport invariance across equal kernel/measure
+  have hk_eq := matrixToKernel_RSrow_eq_κ (NN:=NN) (spec:=spec) (p:=p) (T:=T)
+  have hμ_eq := vecToMeasure_eq_μBoltz (NN:=NN) (spec:=spec) (p:=p) (T:=T)
+  -- rewrite and conclude
+  rw [MCMC.Finite.isStationary_iff_invariant
+    (P := RSrow (NN:=NN) (spec:=spec) p T)
+    (π := πBoltzVec (NN:=NN) (spec:=spec) (p:=p) (T:=T)) hP]
+  simpa [hk_eq, hμ_eq] using hinvκ
+
+theorem RSrow_stationary_unique_eq_πBoltzVec :
+    (Classical.choose
+      (RSrow_exists_unique_stationary_distribution (NN:=NN) (spec:=spec) (p:=p) (T:=T)).exists)
+      = πBoltzVec (NN:=NN) (spec:=spec) (p:=p) (T:=T) := by
+  classical
+  -- uniqueness from `MCMC.Finite` + stationarity of `πBoltzVec`
+  have huniq := RSrow_exists_unique_stationary_distribution (NN:=NN) (spec:=spec) (p:=p) (T:=T)
+  have hstat := πBoltzVec_is_stationary_RSrow (NN:=NN) (spec:=spec) (p:=p) (T:=T)
+  exact (huniq.unique (Classical.choose_spec huniq.exists) hstat).symm
+
+end IdentifyStationary
 
 end Ergodicity
