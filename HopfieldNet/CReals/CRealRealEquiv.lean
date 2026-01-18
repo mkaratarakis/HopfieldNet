@@ -279,5 +279,181 @@ def toRealRingHom : CReal →+* ℝ where
   map_add' := by intro x y; simpa using toReal_add x y
   map_mul' := by intro x y; simpa using toReal_mul x y
 
+/-! ### Noncomputable inverse `ℝ → CReal` (for theorem transfer) -/
+
+open Classical
+
+namespace FromReal
+
+open CauSeq
+open CauSeq.Completion
+
+/-- A (noncomputable) modulus index for a Cauchy sequence at precision `2^{-n}`. -/
+noncomputable def idx (f : CauSeq ℚ absℚ) (n : ℕ) : ℕ :=
+  Nat.find (f.cauchy₂ (ε := (1 : ℚ) / (2 ^ n)) (by
+    have hpow : (0 : ℚ) < (2 : ℚ) ^ n := pow_pos (by norm_num) n
+    exact one_div_pos.mpr hpow))
+
+theorem idx_spec (f : CauSeq ℚ absℚ) (n : ℕ) :
+    ∀ j ≥ idx f n, ∀ k ≥ idx f n, |f j - f k| < (1 : ℚ) / (2 ^ n) := by
+  simpa [idx] using (Nat.find_spec (f.cauchy₂ (ε := (1 : ℚ) / (2 ^ n)) (by
+    have hpow : (0 : ℚ) < (2 : ℚ) ^ n := pow_pos (by norm_num) n
+    exact one_div_pos.mpr hpow)))
+
+/-- Monotone index sequence built from `idx` (so later approximants are taken further in the tail). -/
+noncomputable def idxMono (f : CauSeq ℚ absℚ) : ℕ → ℕ
+  | 0 => idx f 0
+  | n + 1 => max (idxMono f n) (idx f (n + 1))
+
+theorem idxMono_le_succ (f : CauSeq ℚ absℚ) (n : ℕ) : idxMono f n ≤ idxMono f (n + 1) := by
+  simp [idxMono]
+
+theorem idx_le_idxMono (f : CauSeq ℚ absℚ) : ∀ n, idx f n ≤ idxMono f n := by
+  intro n
+  cases n with
+  | zero =>
+      simp [idxMono]
+  | succ n =>
+      simp [idxMono]
+
+theorem idxMono_mono (f : CauSeq ℚ absℚ) : Monotone (idxMono f) := by
+  intro a b hab
+  induction hab with
+  | refl =>
+      exact le_rfl
+  | step hab ih =>
+      exact _root_.le_trans ih (idxMono_le_succ f _)
+
+/--
+Regularize a Mathlib Cauchy sequence into a `CReal.Pre` (noncomputably).
+
+This is the standard “regular subsequence” construction.
+-/
+noncomputable def preOfCauSeq (f : CauSeq ℚ absℚ) : CReal.Pre where
+  -- extra slack `+2` (helps in well-definedness under `CauSeq` equivalence)
+  approx := fun n => f (idxMono f (n + 2))
+  is_regular := by
+    intro n m hnm
+    -- work at precision `n+2`
+    have hnm' : n + 2 ≤ m + 2 := Nat.add_le_add_right hnm 2
+    have hn_le : idx f (n + 2) ≤ idxMono f (n + 2) := idx_le_idxMono f (n + 2)
+    have hm_le : idx f (n + 2) ≤ idxMono f (m + 2) := by
+      have : idxMono f (n + 2) ≤ idxMono f (m + 2) := idxMono_mono f hnm'
+      exact _root_.le_trans hn_le this
+    have hlt :=
+      idx_spec f (n + 2) (idxMono f (n + 2)) hn_le (idxMono f (m + 2)) hm_le
+    have hle : |f (idxMono f (n + 2)) - f (idxMono f (m + 2))| ≤ (1 : ℚ) / (2 ^ (n + 2)) :=
+      le_of_lt (by simpa [abs_sub_comm] using hlt)
+    have hmono : (1 : ℚ) / (2 ^ (n + 2)) ≤ (1 : ℚ) / (2 ^ n) := by
+      have hpow : (2 : ℚ) ^ n ≤ (2 : ℚ) ^ (n + 2) :=
+        pow_le_pow_right₀ (a := (2 : ℚ)) (by norm_num) (Nat.le_add_right n 2)
+      have hpos : (0 : ℚ) < (2 : ℚ) ^ n := pow_pos (by norm_num) n
+      have h := one_div_le_one_div_of_le hpos hpow
+      simpa [pow_add, pow_two, one_div] using h
+    exact _root_.le_trans hle hmono
+
+/-- Map an element of the Cauchy completion into `CReal` by regularization. -/
+noncomputable def ofCauchy : CauSeq.Completion.Cauchy (_root_.abs : ℚ → ℚ) → CReal :=
+  Quotient.lift (fun f : CauSeq ℚ absℚ => (⟦preOfCauSeq f⟧ : CReal)) (by
+    intro f g hfg
+    apply Quotient.sound
+    intro n
+    -- use the `LimZero` witness at precision `2^{-(n+3)}`
+    have hlim : LimZero (f - g) := hfg
+    have hpos : (0 : ℚ) < (1 : ℚ) / (2 ^ (n + 3)) := by
+      have hpow : (0 : ℚ) < (2 : ℚ) ^ (n + 3) := pow_pos (by norm_num) _
+      exact one_div_pos.mpr hpow
+    obtain ⟨N, hN⟩ := hlim ((1 : ℚ) / (2 ^ (n + 3))) hpos
+    -- synchronize at a common large index `T`
+    let i : ℕ := idxMono f (n + 3)
+    let j : ℕ := idxMono g (n + 3)
+    let T : ℕ := max i (max j N)
+    have hiT : i ≤ T := le_max_left _ _
+    have hjT : j ≤ T := by
+      exact _root_.le_trans (le_max_left _ _) (le_max_right _ _)
+    have hNT : N ≤ T := by
+      exact _root_.le_trans (le_max_right _ _) (le_max_right _ _)
+    -- tails of `f` and `g` are Cauchy at scale `2^{-(n+3)}`
+    have hfi : idx f (n + 3) ≤ i := idx_le_idxMono f (n + 3)
+    have hfj : idx g (n + 3) ≤ j := idx_le_idxMono g (n + 3)
+    have hfT : idx f (n + 3) ≤ T := _root_.le_trans hfi hiT
+    have hgT : idx g (n + 3) ≤ T := _root_.le_trans hfj hjT
+    have hf_tail : |f i - f T| ≤ (1 : ℚ) / (2 ^ (n + 3)) := by
+      exact le_of_lt (idx_spec f (n + 3) i hfi T hfT)
+    have hg_tail : |g T - g j| ≤ (1 : ℚ) / (2 ^ (n + 3)) := by
+      exact le_of_lt (by
+        -- `idx_spec` gives `|g T - g j| < ...` once both indices are beyond the modulus
+        have := idx_spec g (n + 3) T hgT j hfj
+        simpa [abs_sub_comm] using this)
+    have hfgT : |f T - g T| ≤ (1 : ℚ) / (2 ^ (n + 3)) := by
+      -- apply `LimZero` at `T ≥ N`
+      have := hN T hNT
+      -- `(f - g) T = f T - g T`
+      simpa [CauSeq.sub_apply] using le_of_lt this
+    -- now bound the difference of the regularized approximants at index `n+1`
+    have habs :
+        |(preOfCauSeq f).approx (n + 1) - (preOfCauSeq g).approx (n + 1)|
+          ≤ |f i - f T| + |f T - g T| + |g T - g j| := by
+      -- unfold the approximants at index `n+1` (since `preOfCauSeq` uses slack `+2`)
+      have : (preOfCauSeq f).approx (n + 1) = f i := by
+        simp [preOfCauSeq, i, idxMono, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm]
+      have : (preOfCauSeq g).approx (n + 1) = g j := by
+        simp [preOfCauSeq, j, idxMono, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm]
+      -- triangle inequality on three terms
+      -- `f i - g j = (f i - f T) + (f T - g T) + (g T - g j)`
+      have hsplit : f i - g j = (f i - f T) + (f T - g T) + (g T - g j) := by ring
+      -- apply `abs_add_le` twice
+      calc
+        |f i - g j|
+            = |(f i - f T) + (f T - g T) + (g T - g j)| := by
+                simp
+        _ = |((f i - f T) + (f T - g T)) + (g T - g j)| := by ring_nf
+        _ ≤ |(f i - f T) + (f T - g T)| + |g T - g j| := abs_add_le _ _
+        _ ≤ (|f i - f T| + |f T - g T|) + |g T - g j| := by
+              gcongr
+              exact abs_add_le _ _
+        _ = |f i - f T| + |f T - g T| + |g T - g j| := by ring
+    have hsum :
+        |(preOfCauSeq f).approx (n + 1) - (preOfCauSeq g).approx (n + 1)|
+          ≤ (3 : ℚ) / (2 ^ (n + 3)) := by
+      -- use the three bounds
+      have hf_tail' : |f i - f T| ≤ (1 : ℚ) / (2 ^ (n + 3)) := hf_tail
+      have hfgT' : |f T - g T| ≤ (1 : ℚ) / (2 ^ (n + 3)) := hfgT
+      have hg_tail' : |g T - g j| ≤ (1 : ℚ) / (2 ^ (n + 3)) := by
+        simpa [abs_sub_comm] using hg_tail
+      -- combine
+      calc
+        |(preOfCauSeq f).approx (n + 1) - (preOfCauSeq g).approx (n + 1)|
+            ≤ |f i - f T| + |f T - g T| + |g T - g j| := by
+                  simpa [preOfCauSeq, i, j] using habs
+        _ ≤ (1 : ℚ) / (2 ^ (n + 3)) + (1 : ℚ) / (2 ^ (n + 3)) + (1 : ℚ) / (2 ^ (n + 3)) := by
+              gcongr
+        _ = (3 : ℚ) / (2 ^ (n + 3)) := by ring
+    have hbound : (3 : ℚ) / (2 ^ (n + 3)) ≤ (1 : ℚ) / (2 ^ n) := by
+      have hcoeff : (3 : ℚ) / 8 ≤ 1 := by norm_num
+      have hpos' : 0 ≤ (1 : ℚ) / (2 ^ n) := by positivity
+      have h1 : (1 : ℚ) / (2 ^ (n + 3)) = (1 : ℚ) / (2 ^ n) / 8 := by
+        simp [pow_add, div_eq_mul_inv]
+        ring
+      -- rewrite and compare the coefficients
+      calc
+        (3 : ℚ) / (2 ^ (n + 3))
+            = (3 : ℚ) * ((1 : ℚ) / (2 ^ (n + 3))) := by
+                simp [div_eq_mul_inv]
+        _ = (3 : ℚ) * ((1 : ℚ) / (2 ^ n) / 8) := by
+                simp [h1]
+        _ = ((3 : ℚ) / 8) * ((1 : ℚ) / (2 ^ n)) := by
+                ring
+        _ ≤ (1 : ℚ) * ((1 : ℚ) / (2 ^ n)) := by
+                gcongr
+        _ = (1 : ℚ) / (2 ^ n) := by ring
+    exact _root_.le_trans hsum hbound)
+
+/-- Map `ℝ` to `CReal` using `Real.ringEquivCauchy`. -/
+noncomputable def ofReal (x : ℝ) : CReal :=
+  ofCauchy (Real.ringEquivCauchy x)
+
+end FromReal
+
 end CReal
 end Computable

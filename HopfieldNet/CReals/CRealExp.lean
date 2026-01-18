@@ -1,3 +1,4 @@
+
 import HopfieldNet.CReals.CRealExpSmall
 
 namespace Computable

@@ -1,5 +1,4 @@
-import HopfieldNet.CReals.CRealPre2
-import Mathlib
+import HopfieldNet.CReals.CRealExpSmall
 
 /-!
 # `exp`: cross-`k` independence (range reduction)
@@ -23,10 +22,6 @@ namespace CReal
 open scoped BigOperators
 
 open CReal.Pre
-
-/-- Spec-side exponential on rationals for small inputs. -/
-def expRatSmall (x : ℚ) (hx : |x| ≤ (1/2 : ℚ)) : CReal :=
-  ⟦small_exp x hx⟧
 
 /-- Helper: `|x/2| ≤ 1/2` whenever `|x| ≤ 1/2`. -/
 lemma abs_div_two_le_half {x : ℚ} (hx : |x| ≤ (1/2 : ℚ)) : |x / 2| ≤ (1/2 : ℚ) := by

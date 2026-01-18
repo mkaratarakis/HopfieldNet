@@ -4,9 +4,6 @@ namespace Computable
 namespace CReal
 namespace Pre
 
-set_option linter.style.longLine false
-set_option linter.style.commandStart false
-
 /-! ### Inversion (1/x) -/
 
 /--
@@ -63,9 +60,7 @@ def inv (x : CReal.Pre) (W : InvWitness x) : CReal.Pre where
     intro n m hnm
     let N := W.N; let S := 2*N + 2
     let Kn := n + S; let Km := m + S
-    have hKnm : Kn ≤ Km := by
-      dsimp [Kn, Km]
-      linarith
+    have hKnm : Kn ≤ Km := Nat.add_le_add_right hnm S
     have hKn_ge_N1 : N+1 ≤ Kn := by dsimp [Kn, S]; linarith
     have hKm_ge_N1 : N+1 ≤ Km := _root_.le_trans hKn_ge_N1 hKnm
     have h_bound_Kn := x.inv_witness_stability W Kn hKn_ge_N1
@@ -251,8 +246,7 @@ theorem inv_witness_irrelevant (x : CReal.Pre) (W1 W2 : InvWitness x) :
             have hmin : min N1 N2 = N1 := by
               exact min_eq_left hle
             have horder : 2 * N1 + 2 ≤ 2 * N2 + 2 := by
-              dsimp [N1, N2]
-              linarith
+              exact Nat.add_le_add_right (Nat.mul_le_mul_left 2 hle) 2
             have hmin' : min (K + (2 * N1 + 2)) (K + (2 * N2 + 2)) = K + (2 * N1 + 2) :=
               min_eq_left (Nat.add_le_add_left horder K)
             simpa [hmin, two_mul, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using hmin'
@@ -260,8 +254,7 @@ theorem inv_witness_irrelevant (x : CReal.Pre) (W1 W2 : InvWitness x) :
             have hmin : min N1 N2 = N2 := by
               exact min_eq_right hle
             have horder : 2 * N2 + 2 ≤ 2 * N1 + 2 := by
-              dsimp [N1, N2]
-              linarith
+              exact Nat.add_le_add_right (Nat.mul_le_mul_left 2 hle) 2
             have hmin' : min (K + (2 * N1 + 2)) (K + (2 * N2 + 2)) = K + (2 * N2 + 2) :=
               min_eq_right (Nat.add_le_add_left horder K)
             simpa [hmin, two_mul, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using hmin'
@@ -317,7 +310,7 @@ theorem inv_witness_irrelevant (x : CReal.Pre) (W1 W2 : InvWitness x) :
       |I1.approx (n+1) - I2.approx (n+1)|
         ≤ |I1.approx (n+1) - I1.approx K|
           + (|I1.approx K - I2.approx K| + |I2.approx K - I2.approx (n+1)|) := by
-    linarith
+    exact _root_.le_trans h_step1 (Rat.add_le_add_left.mpr h_step2)
   have h_reg2' : |I2.approx K - I2.approx (n+1)| ≤ 1 / 2 ^ (n+1) := by
     simpa [abs_sub_comm] using h_reg2
   have h_final_bound :
@@ -535,8 +528,8 @@ theorem inv_respects_equiv
         have hNx_le_2Nx : Nx ≤ 2 * Nx := by
           simpa [Nat.mul_comm, one_mul] using
             Nat.mul_le_mul_left Nx (by decide : 1 ≤ 2)
-        have hNx1_le_2Nx1 : Nx + 1 ≤ 2 * Nx + 1 := by
-          linarith
+        have hNx1_le_2Nx1 : Nx + 1 ≤ 2 * Nx + 1 :=
+          Nat.add_le_add_right hNx_le_2Nx 1
         have hNx1_le_2Nx2 : Nx + 1 ≤ 2 * Nx + 2 :=
           _root_.le_trans hNx1_le_2Nx1 (Nat.le_succ (2 * Nx + 1))
         exact _root_.le_trans hNx1_le_2Nx2 (Nat.le_add_left _ _)
@@ -550,8 +543,7 @@ theorem inv_respects_equiv
           have hNx_le_2Nx : Nx ≤ 2 * Nx := by
             simpa [one_mul, Nat.mul_comm] using
               Nat.mul_le_mul_left Nx (by decide : 1 ≤ 2)
-          have h2' : Nx + 5 ≤ 2 * Nx + 5 := by
-            linarith--add_le_add_right hNx_le_2Nx 5
+          have h2' : Nx + 5 ≤ 2 * Nx + 5 := Nat.add_le_add_right hNx_le_2Nx 5
           exact _root_.le_trans h2' (Nat.le_succ _)
         have hNxSy : Nx + 1 ≤ Sy := by
           dsimp [Sy]; exact _root_.le_trans h1 h2
@@ -887,8 +879,7 @@ def lim_pre (s : RCauSeq) : CReal.Pre :=
         exact s.is_cauchy n m hnm
       have h_term₂ : |intermediate - pre_seq m| ≤ (1 : ℚ) / 2 ^ (n + 2) := by
         dsimp [pre_seq]
-        have h_le : n + 2 ≤ m + 2 := by
-          linarith--add_le_add_right hnm 2
+        have h_le : n + 2 ≤ m + 2 := Nat.add_le_add_right hnm 2
         simpa [abs_sub_comm] using
           (s.pre (m + 2)).is_regular (n + 2) (m + 2) h_le
       have h_sum : (1 : ℚ) / 2 ^ (n + 1) + (1 : ℚ) / 2 ^ (n + 2) ≤ (1 : ℚ) / 2 ^ n := by
@@ -967,6 +958,7 @@ theorem apart_zero_iff_separated (x : CReal) :
 
 /-! ### Pseudo-Order Structure -/
 
+set_option maxHeartbeats 0 in
 /--
 CReal forms a pseudo-order. This is the constructive analogue of a linear order
 for structures where equality is not decidable: if x < y, then for any z, either x < z or z < y.
@@ -1039,9 +1031,8 @@ theorem pseudo_order_property (x y z : CReal) (hxy : x < y) : x < z ∨ z < y :=
         z_pre.approx (K+1) ≤
           (x_pre.approx (K+1) + y_pre.approx (K+1))/2 + 2/2^K := by
       have hz_to_mK :
-          z_pre.approx (K+1) ≤ (x_pre.approx K + y_pre.approx K)/2 + 1/2^K := by
-            linarith
-        --(hz_up.trans (add_le_add_right h_le _))
+          z_pre.approx (K+1) ≤ (x_pre.approx K + y_pre.approx K)/2 + 1/2^K :=
+        (hz_up.trans (Rat.add_le_add_right.mpr h_le))
       have : (x_pre.approx K + y_pre.approx K)/2
               ≤ (x_pre.approx (K+1) + y_pre.approx (K+1))/2 + 1/2^K := by
         linarith [hm_ge]
@@ -1052,9 +1043,8 @@ theorem pseudo_order_property (x y z : CReal) (hxy : x < y) : x < z ∨ z < y :=
             ≤ (x_pre.approx (K+1) + y_pre.approx (K+1))/2 + 2/2^K := by
         calc
           (x_pre.approx K + y_pre.approx K)/2 + 1/2^K
-              ≤ (x_pre.approx (K+1)+y_pre.approx (K+1))/2 + 1/2^K + 1/2^K := by {
-                linarith
-                }--step'
+              ≤ (x_pre.approx (K+1)+y_pre.approx (K+1))/2 + 1/2^K + 1/2^K :=
+                Rat.add_le_add_right.mpr this
           _ = (x_pre.approx (K+1)+y_pre.approx (K+1))/2 + (1/2^K + 1/2^K) := by ring
           _ = (x_pre.approx (K+1)+y_pre.approx (K+1))/2 + 2/2^K := by simp; ring_nf
       exact hz_to_mK.trans h_lift
@@ -1348,9 +1338,8 @@ lemma lift_sync_bound_to_all_indices
   have hreg' : |d.approx (j + 1) - d.approx K| ≤ (1 : ℚ) / 2 ^ (min j K) :=
     hreg.trans h_one_div
   have h_sum : |d.approx (j + 1) - d.approx K| + |d.approx K|
-      ≤ (1 : ℚ) / 2 ^ (min j K) + |d.approx K| := by
-    linarith
-    --add_le_add_right hreg' _
+      ≤ (1 : ℚ) / 2 ^ (min j K) + |d.approx K| := Rat.add_le_add_right.mpr hreg'
+  --  Nat.add_le_add_right hreg' _
   have h_step : |d.approx (j + 1)|
       ≤ (1 : ℚ) / 2 ^ (min j K) + |d.approx K| :=
     _root_.le_trans h_tri h_sum
@@ -1358,11 +1347,9 @@ lemma lift_sync_bound_to_all_indices
       ≤ |d.approx K| + (1 : ℚ) / 2 ^ (min j K) := by
     simpa [add_comm] using h_step
   have hK_add :
-      |d.approx K| + (1 : ℚ) / 2 ^ (min j K) ≤ r + (1 : ℚ) / 2 ^ (min j K) := by
-    linarith
-    --add_le_add_right hK _
+      |d.approx K| + (1 : ℚ) / 2 ^ (min j K) ≤ r + (1 : ℚ) / 2 ^ (min j K) :=
+        Rat.add_le_add_right.mpr hK
   exact _root_.le_trans h_step' hK_add
-
 
 -- From absolute pre-bounds at all indices to a CReal absolute-value bound
 lemma abs_le_of_pre_abs_bound (d : CReal.Pre) {r : ℚ}
@@ -1396,7 +1383,6 @@ lemma min_tail_split (j n : ℕ) :
         exact le_add_of_nonneg_left hnn
       simp [min_eq_right h]
 
-
 lemma lift_sync_bound_with_uniform_tail
   (d : CReal.Pre) (n : ℕ) {r : ℚ}
   (h_sync : |d.approx (n + 1)| ≤ r) :
@@ -1422,7 +1408,6 @@ lemma diff_sync_bound_for_d (s : CReal.RCauSeq) (n : ℕ) (hn : 2 ≤ n) :
     simp [lim_pre_approx_simp]
   rw [hJ, hlim]
   exact CReal.diff_at_sync_bound s n hn
-
 
 lemma all_indices_bound_from_sync
   (d : CReal.Pre) (n k : ℕ)
@@ -1891,8 +1876,7 @@ lemma exp_tail_bound_core (x : ℚ) (hx : |x| ≤ (1/2 : ℚ)) (n m : ℕ)
   set Nn := expTruncLevel n        -- = n + 2
   set Nm := expTruncLevel m
   have hN : Nn ≤ Nm := by
-    dsimp [Nn, Nm, expTruncLevel];
-    linarith --exact add_le_add_right hnm 2
+    dsimp [Nn, Nm, expTruncLevel]; exact Nat.add_le_add_right hnm 2
   -- Geometric tail (already proved)
   have hgeom := exp_tail_le_geom x hx Nn Nm hN
   -- (1/2)^k = 1 / 2^k
@@ -2010,57 +1994,6 @@ def small_exp (x : ℚ) (hx : |x| ≤ (1/2 : ℚ)) : CReal.Pre :=
 
 /-- Cast the partial exponential sum to ℝ. -/
 def expPartialR (x : ℚ) (N : ℕ) : ℝ := (expPartial x N : ℚ)
-
-open Filter Topology
-
-/-
-/-- Remainder estimate to the true real exponential (fixed). -/
-lemma exp_series_tail_bound
-  (x : ℚ) (hx : |x| ≤ (1/2 : ℚ)) :
-  ∀ n, |Real.exp (x : ℝ) - expPartialR x (n + 2)| ≤ (1 : ℝ) / 2^n := by sorry
-
--- Note: small_exp.approx n = expPartial x (n+2), so the previous lemma gives the desired real remainder bound.
-
- /-- Convergence: `small_exp` approximants converge to `Real.exp x`. -/
-lemma small_exp_converges_to_real
-  (x : ℚ) (hx : |x| ≤ (1/2 : ℚ)) :
-  ∀ ε > (0:ℝ), ∃ N, ∀ n ≥ N,
-    |(small_exp x hx).approx n - (Real.exp (x:ℝ))| < ε := by sorry
-
-/-- Representation equality: `small_exp` represents `Real.exp x`. -/
-theorem small_exp_represents_exp (x : ℚ) (hx : |x| ≤ (1/2 : ℚ)) :
-  (⟦small_exp x hx⟧ : CReal) = (⟦small_exp x hx⟧ : CReal) := by
-  rfl
-  -/
-
-
-/-
-/--
-`CReal.Pre` representation of exp(x) for a rational x such that |x| ≤ 1/2.
-Adapts `rationalSmallExp` from Approach 2.
--/
-def small_exp (x : ℚ) (hx : |x| ≤ 1/2) : CReal.Pre := {
-  approx := fun n =>
-    -- SOTA Requirement: Constructively determine the number of terms K(n) needed
-    -- such that the Taylor remainder R_K(x) < 1/2^n.
-    -- Bound for |x| <= 1/2: R_K(x) ≤ 2 * |x|^(K+1) / (K+1)!.
-
-    -- Placeholder: A constructive search algorithm for K(n) must be implemented here.
-    let K := 20 -- Placeholder value.
-
-    -- Calculation mirroring the Taylor approximation in Approach 2.
-    let terms := List.zipWith (fun num den => num / den) (powers x (K+1)) (factorials (K+1))
-    terms.sum
-  is_regular := by
-    -- Rigorous proof required, utilizing the Taylor remainder bounds and the constructive K(n).
-    sorry
-}
--/
-
---#eval (small_exp (1/4 : ℚ) (by norm_num)).approx 5  -- Example evaluation
---#eval (small_exp (-1/3 : ℚ) (by norm_num)).approx 5  -- Example evaluation
-
-
 end Pre
 end CReal
 end Computable
