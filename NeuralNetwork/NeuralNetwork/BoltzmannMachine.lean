@@ -369,6 +369,7 @@ lemma logisticProb_neg (x : ℝ) : logisticProb (-x) = 1 - logisticProb x := by
     have hden : (1 + Real.exp (-x)) ≠ 0 :=
       (add_pos_of_pos_of_nonneg zero_lt_one (le_of_lt (Real.exp_pos _))).ne'
     field_simp [hden]
+    ring
   simp_all only [one_div, neg_neg]
 
 end TwoState
@@ -719,5 +720,6 @@ lemma one_sub_logistic_div_logistic (x : ℝ) :
   unfold logisticProb
   have h_den_pos : 0 < 1 + Real.exp (-x) := by apply add_pos_of_pos_of_nonneg zero_lt_one; exact (Real.exp_pos _).le
   field_simp [h_den_pos.ne']
+  ring
 
 end HopfieldBoltzmann

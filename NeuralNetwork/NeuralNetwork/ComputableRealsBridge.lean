@@ -89,7 +89,7 @@ variable (NN : NeuralNetwork R U σ)
 variable [IsHamiltonianR (R := R) (U := U) (σ := σ) NN]
 
 /-- The induced `ℝ`-valued energy function obtained by pushing through `toReal`. -/
-noncomputable def energyToReal (p : Params NN) : NN.State → ℝ :=
+def energyToReal (p : Params NN) : NN.State → ℝ :=
   fun s => (HasToReal.toRealRingHom (R := R)) (IsHamiltonianR.energy (NN := NN) p s)
 
 lemma energyToReal_is_lyapunov (p : Params NN) (s : NN.State) (u : U) :

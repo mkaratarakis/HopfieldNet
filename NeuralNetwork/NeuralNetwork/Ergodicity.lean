@@ -1,4 +1,5 @@
 import MCMC.PF.LinearAlgebra.Matrix.PerronFrobenius.Stochastic
+import MCMC.Finite.Core
 import NeuralNetwork.NeuralNetwork.DetailedBalanceBM
 
 set_option linter.unusedSectionVars false
@@ -710,7 +711,7 @@ lemma RScol_exists_positive_power
 /-- Irreducible: positive path between any two states. -/
 lemma RScol_irred
     (spec : TwoState.EnergySpec' (NN:=NN)) (p : Params NN) (T : Temperature) :
-    Matrix.Irreducible (RScol (NN:=NN) (spec:=spec) p T) := by
+    Matrix.IsIrreducible (RScol (NN:=NN) (spec:=spec) p T) := by
   -- Set A := transition matrix
   set A := RScol (NN:=NN) (spec:=spec) p T
   -- Provide the graph structure induced by A for subsequent Path constructions.
@@ -743,14 +744,17 @@ lemma RScol_irred
     have hn_pos : 0 < n := Nat.pos_of_ne_zero hzero
     have hA_nonneg : ∀ i j, 0 ≤ A i j :=
       RScol_nonneg (NN:=NN) (spec:=spec) (p:=p) (T:=T)
-    -- pow_entry_pos_iff_exists_path with indices (s, s')
-    have hpath :=
-      (Matrix.pow_entry_pos_iff_exists_path (A:=A) hA_nonneg n s s').mp hpos
-    rcases hpath with ⟨p, hp_len⟩
+    -- Convert positivity of a power entry into a positive-length quiver path.
+    have hpath :
+        Nonempty {q : Quiver.Path s s' // q.length = n} := by
+      -- `pow_apply_pos_iff_nonempty_path` is the Mathlib lemma linking powers to paths.
+      simpa using
+        (Matrix.pow_apply_pos_iff_nonempty_path (A := A) (hA := hA_nonneg) n s s').1 hpos
+    rcases hpath with ⟨⟨p, hp_len⟩⟩
     -- n > 0 ⇒ path length > 0
     have hp_len_pos : p.length > 0 := by
       simpa [hp_len] using hn_pos
-    exact ⟨⟨p, hp_len_pos⟩⟩
+    exact ⟨p, hp_len_pos⟩
 
 /-- PF uniqueness of the stationary vector in the simplex for the random-scan kernel. -/
 theorem RScol_uniqueStationarySimplex :
@@ -767,7 +771,7 @@ theorem randomScan_ergodicUniqueInvariant :
   ProbabilityTheory.Kernel.IsReversible (κ)
     ((HopfieldBoltzmann.CEparams (NN:=NN) (spec:=spec) p).μProd T)
   ∧ (∀ s, 0 < RScol (NN:=NN) (spec:=spec) p T s s)
-  ∧ Matrix.Irreducible (RScol (NN:=NN) (spec:=spec) p T)
+  ∧ Matrix.IsIrreducible (RScol (NN:=NN) (spec:=spec) p T)
   ∧ ∃! (v : stdSimplex ℝ NN.State),
         (RScol (NN:=NN) (spec:=spec) p T) *ᵥ v.val = v.val := by
   refine ⟨?rev, ?diag, ?irr, ?uniq⟩
@@ -775,5 +779,62 @@ theorem randomScan_ergodicUniqueInvariant :
   · exact RScol_diag_pos (NN:=NN) (spec:=spec) (p:=p) (T:=T)
   · exact RScol_irred (NN:=NN) (spec:=spec) (p:=p) (T:=T)
   · exact RScol_uniqueStationarySimplex (NN:=NN) (spec:=spec) (p:=p) (T:=T)
+
+/-
+  MCMC.Finite integration (row-stochastic convention).
+
+  `RScol` is column-stochastic (destination, source). `MCMC.Finite.IsStochastic` expects
+  row-stochastic (source, destination), so we work with the transpose `RSrow = RScolᵀ`.
+-/
+
+/-- Row-stochastic transition matrix corresponding to `randomScanKernel`. -/
+noncomputable def RSrow (NN : NeuralNetwork ℝ U σ)
+    [Fintype NN.State] [DecidableEq NN.State] [Nonempty NN.State]
+    [TwoStateNeuralNetwork NN] [TwoStateExclusive NN]
+    (spec : TwoState.EnergySpec' (NN:=NN)) (p : Params NN) (T : Temperature) :
+    Matrix NN.State NN.State ℝ :=
+  (RScol (NN:=NN) (spec:=spec) p T)ᵀ
+
+lemma RSrow_isStochastic :
+    MCMC.Finite.IsStochastic (RSrow (NN:=NN) (spec:=spec) p T) := by
+  classical
+  constructor
+  · intro i j
+    -- entrywise nonneg from RScol_nonneg
+    simpa [RSrow, Matrix.transpose_apply] using
+      (RScol_nonneg (NN:=NN) (spec:=spec) (p:=p) (T:=T) j i)
+  · intro i
+    -- row sum of RSrow is column sum of RScol
+    simpa [RSrow, Matrix.transpose_apply] using
+      (RScol_colsum_one (NN:=NN) (spec:=spec) (p:=p) (T:=T) i)
+
+lemma RSrow_irred :
+    Matrix.IsIrreducible (RSrow (NN:=NN) (spec:=spec) p T) := by
+  -- irreducible is invariant under transpose
+  simpa [RSrow] using (Matrix.IsIrreducible.transpose (A := RScol (NN:=NN) (spec:=spec) p T)
+    (RScol_irred (NN:=NN) (spec:=spec) (p:=p) (T:=T)))
+
+lemma RSrow_primitive :
+    Matrix.IsPrimitive (RSrow (NN:=NN) (spec:=spec) p T) := by
+  classical
+  -- `IsPrimitive` from nonneg + irreducible + positive diagonal
+  refine Matrix.IsPrimitive.of_irreducible_pos_diagonal
+    (A := RSrow (NN:=NN) (spec:=spec) p T) ?_ (RSrow_irred (NN:=NN) (spec:=spec) (p:=p) (T:=T)) ?_
+  · intro i j
+    -- nonneg already shown in stochasticity proof
+    exact (RSrow_isStochastic (spec:=spec) (p:=p) (T:=T)).1 i j
+  · intro i
+    -- diagonal positivity transfers across transpose
+    simpa [RSrow, Matrix.transpose_apply] using
+      (RScol_diag_pos (NN:=NN) (spec:=spec) (p:=p) (T:=T) i)
+
+theorem RSrow_exists_unique_stationary_distribution :
+    ∃! (π : stdSimplex ℝ NN.State),
+      MCMC.Finite.IsStationary (RSrow (NN:=NN) (spec:=spec) p T) π := by
+  classical
+  exact MCMC.Finite.exists_unique_stationary_distribution_of_irreducible
+    (n := NN.State)
+    (h_stoch := RSrow_isStochastic (spec:=spec) (p:=p) (T:=T))
+    (h_irred := RSrow_irred (spec:=spec) (p:=p) (T:=T))
 
 end Ergodicity

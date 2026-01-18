@@ -57,7 +57,7 @@ instance : MeasurableSingletonClass NN.State := by
   unfold Measurable; intro s _; simp
 
 /-- Energy as an `ℝ`-valued function, obtained by pushing `spec.E` through `toReal`. -/
-noncomputable def energyReal
+def energyReal
     (NN : NeuralNetwork R U σ)
     [TwoStateNeuralNetwork NN]
     (spec : TwoState.EnergySpec' (NN := NN))
