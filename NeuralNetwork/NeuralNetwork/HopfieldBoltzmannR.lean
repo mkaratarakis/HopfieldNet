@@ -1,6 +1,7 @@
 import NeuralNetwork.NeuralNetwork.TwoState
 import NeuralNetwork.NeuralNetwork.TSAux
 import NeuralNetwork.NeuralNetwork.ComputableRealsBridge
+import NeuralNetwork.NeuralNetwork.PMFMatrix
 import PhysLean.StatisticalMechanics.CanonicalEnsemble.Finite
 
 /-!
@@ -111,6 +112,17 @@ Extracted from the discrete `PMF` kernel `TwoState.gibbsUpdate`.
 noncomputable def Kbm (p : Params NN) (T : Temperature) (f : R →+* ℝ)
     (u : U) (s s' : NN.State) : ℝ :=
   ((TwoState.gibbsUpdate (NN := NN) f p T s u) s').toReal
+
+/-- The `ℝ`-matrix form of the one-site Gibbs kernel at site `u`. -/
+noncomputable def KbmMatrix (p : Params NN) (T : Temperature) (f : R →+* ℝ) (u : U) :
+    Matrix NN.State NN.State ℝ :=
+  PMFMatrix.pmfToMatrix (κ := fun s : NN.State => TwoState.gibbsUpdate (NN := NN) f p T s u)
+
+theorem KbmMatrix_isStochastic (p : Params NN) (T : Temperature) (f : R →+* ℝ) (u : U) :
+    MCMC.Finite.IsStochastic (KbmMatrix (NN := NN) p T f u) := by
+  classical
+  simpa [KbmMatrix] using
+    (PMFMatrix.pmfToMatrix_isStochastic (κ := fun s : NN.State => TwoState.gibbsUpdate (NN := NN) f p T s u))
 
 section KbmEval
 
