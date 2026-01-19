@@ -1,31 +1,39 @@
-import Mathematics.Analysis.CstarAlgebra.Classes
-import Mathematics.aux
-import Mathematics.Combinatorics.Quiver.Path
-import Mathematics.Data.List
-import Mathematics.LinearAlgebra.Matrix.PerronFrobenius.CollatzWielandt
-import Mathematics.LinearAlgebra.Matrix.PerronFrobenius.Defs
-import Mathematics.LinearAlgebra.Matrix.PerronFrobenius.Dominance
-import Mathematics.LinearAlgebra.Matrix.PerronFrobenius.Irreducible
-import Mathematics.LinearAlgebra.Matrix.PerronFrobenius.Lemmas
-import Mathematics.LinearAlgebra.Matrix.PerronFrobenius.Primitive
-import Mathematics.LinearAlgebra.Matrix.PerronFrobenius.Stochastic
-import Mathematics.LinearAlgebra.Matrix.PerronFrobenius.Uniqueness
-import Mathematics.LinearAlgebra.Matrix.Spectrum
-import Mathematics.Probability.DetailedBalanceGen
-import Mathematics.Topology.Compactness.ExtremeValueUSC
+/-
+Aggregator module for the `NeuralNetwork` development.
 
-import NeuralNetwork.aux
-import NeuralNetwork.BoltzmannMachine
-import NeuralNetwork.Convergence
-import NeuralNetwork.Core
-import NeuralNetwork.DetailedBalanceBM
-import NeuralNetwork.Ergodicity
-import NeuralNetwork.toCanonicalEnsemble
+We intentionally keep this file focused on the core `NeuralNetwork.NeuralNetwork.*` library.
+The auxiliary `NeuralNetwork.Mathematics.*` development may evolve independently (and currently
+depends on deprecated Mathlib modules).
+-/
+
+import NeuralNetwork.NeuralNetwork.aux
+import NeuralNetwork.NeuralNetwork.BoltzmannMachine
+import NeuralNetwork.NeuralNetwork.Convergence
+import NeuralNetwork.NeuralNetwork.Core
+import NeuralNetwork.NeuralNetwork.DetailedBalanceBM
+import NeuralNetwork.NeuralNetwork.Ergodicity
+import NeuralNetwork.NeuralNetwork.toCanonicalEnsemble
 import NeuralNetwork.NeuralNetwork.ComputableRealsBridge
+import NeuralNetwork.NeuralNetwork.CRealsSOTA
 import NeuralNetwork.NeuralNetwork.FastFiniteEval
+import NeuralNetwork.NeuralNetwork.FastFiniteEvalExplicit
+import NeuralNetwork.NeuralNetwork.FastLogistic
+import NeuralNetwork.NeuralNetwork.FastGibbs
+import NeuralNetwork.NeuralNetwork.FastTwoStateGibbs
+import NeuralNetwork.NeuralNetwork.FastRat
+import NeuralNetwork.NeuralNetwork.FastEnergySpec
+import NeuralNetwork.NeuralNetwork.FastHopfieldEnergy
+import NeuralNetwork.NeuralNetwork.FastRandomScan
+import NeuralNetwork.NeuralNetwork.FastStateEnum
+import NeuralNetwork.NeuralNetwork.FastBoltzmannEval
+import NeuralNetwork.NeuralNetwork.FastMarkovMatrix
+import NeuralNetwork.NeuralNetwork.FastChecks
+import NeuralNetwork.NeuralNetwork.FastCertificates
+import NeuralNetwork.NeuralNetwork.FastDemo
 import NeuralNetwork.NeuralNetwork.HopfieldBoltzmannR
 import NeuralNetwork.NeuralNetwork.PMFMatrix
-import NeuralNetwork.test
-import NeuralNetwork.TSAux
-import NeuralNetwork.TwoState
-import NeuralNetwork.ZeroTemp
+import NeuralNetwork.NeuralNetwork.SampCertBridge
+import NeuralNetwork.NeuralNetwork.test
+import NeuralNetwork.NeuralNetwork.TSAux
+import NeuralNetwork.NeuralNetwork.TwoState
+import NeuralNetwork.NeuralNetwork.ZeroTemp

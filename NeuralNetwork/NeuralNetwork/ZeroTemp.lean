@@ -455,7 +455,7 @@ lemma zeroTemp_target_updPos_as_ofReal_sign
     have hhalf : ENNReal.ofReal ((2 : ℝ)⁻¹) = (2 : ℝ≥0∞)⁻¹ := by
       rw [ENNReal.ofReal_inv_of_pos (by norm_num : (0 : ℝ) < 2)]
       simp
-    simp [h_lhs, h_rhs_arg]; ring_nf; aesop
+    simp [h_lhs, h_rhs_arg, hhalf]
   · -- Case 3: net < θ (negative local field)
     have h_lhs := zeroTempLimitPMF_updPos_eval_neg (NN := NN) p s u hgt rfl rfl
     have h_rhs_arg := neg_of_net_lt_theta (NN := NN) (f:=f) hf net θ hgt

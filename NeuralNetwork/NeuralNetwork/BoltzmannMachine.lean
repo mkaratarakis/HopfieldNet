@@ -338,6 +338,8 @@ lemma updNeg_act_at_u (s : NN.State) (u : U) :
 lemma updNeg_act_noteq (s : NN.State) (u v : U) (h : v ≠ u) :
     (updNeg (NN := NN) s u).act v = s.act v := by
   simp [updNeg, Function.update_of_ne h]
+
+/-
 -- Also need strict inequalities for logisticProb for detailed balance ratios.
 lemma logisticProb_pos (x : ℝ) : 0 < logisticProb x := by
   unfold logisticProb
@@ -350,6 +352,7 @@ lemma logisticProb_lt_one (x : ℝ) : logisticProb x < 1 := by
   unfold logisticProb
   apply (div_lt_one (add_pos_of_pos_of_nonneg zero_lt_one (le_of_lt (Real.exp_pos _)))).mpr
   simp; exact Real.exp_pos _
+  -/
 
 /-- Symmetry: logisticProb (-x) = 1 - logisticProb x. -/
 lemma logisticProb_neg (x : ℝ) : logisticProb (-x) = 1 - logisticProb x := by

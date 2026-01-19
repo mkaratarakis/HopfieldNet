@@ -716,10 +716,9 @@ noncomputable instance IsStrictlyHamiltonian_of_TwoState_EnergySpec
       have hL := h_split_s
       have hR := h_split_s'
       set A := ∑ v ∈ (Finset.univ.erase u), NN.m (s.act v)
-      have : (NN.m (s.act u) + A) < (NN.m (s'.act u) + A) :=
-        add_lt_add_right h_m_lt _
-      simp at this
-      simpa [hL, hR]
+      have h' : (NN.m (s.act u) + A) < (NN.m (s'.act u) + A) := by
+        linarith [h_m_lt]
+      simpa [hL, hR, A] using h'
     -- Rank argument
     let mags : Finset ℝ := (Finset.univ.image fun t : NN.State => mag t)
     set m_old := mag s

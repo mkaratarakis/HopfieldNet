@@ -3,13 +3,13 @@ Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Jean-Baptiste Tristan
 -/
-import HopfieldNet.SampCert.DifferentialPrivacy.Queries.BoundedMean.Basic
-import HopfieldNet.SampCert.DifferentialPrivacy.Queries.Histogram.Basic
-import HopfieldNet.SampCert.DifferentialPrivacy.ZeroConcentrated.System
-import HopfieldNet.SampCert.DifferentialPrivacy.Pure.System
-import HopfieldNet.SampCert.DifferentialPrivacy.Queries.HistogramMean.Properties
-import HopfieldNet.SampCert.DifferentialPrivacy.Approximate.DP
-import HopfieldNet.SampCert.Samplers.Gaussian.Properties
+import HopfieldNet.Attic.SampCert.DifferentialPrivacy.Queries.BoundedMean.Basic
+import HopfieldNet.Attic.SampCert.DifferentialPrivacy.Queries.Histogram.Basic
+import HopfieldNet.Attic.SampCert.DifferentialPrivacy.ZeroConcentrated.System
+import HopfieldNet.Attic.SampCert.DifferentialPrivacy.Pure.System
+import HopfieldNet.Attic.SampCert.DifferentialPrivacy.Queries.HistogramMean.Properties
+import HopfieldNet.Attic.SampCert.DifferentialPrivacy.Approximate.DP
+import HopfieldNet.Attic.SampCert.Samplers.Gaussian.Properties
 import Init.Data.UInt.Lemmas
 
 open SLang PMF

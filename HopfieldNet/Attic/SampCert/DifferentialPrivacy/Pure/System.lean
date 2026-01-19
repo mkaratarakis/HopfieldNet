@@ -3,12 +3,12 @@ Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Jean-Baptiste Tristan
 -/
-import HopfieldNet.SampCert.DifferentialPrivacy.Abstract
-import HopfieldNet.SampCert.DifferentialPrivacy.Pure.DP
-import HopfieldNet.SampCert.DifferentialPrivacy.Pure.Mechanism.Basic
-import HopfieldNet.SampCert.DifferentialPrivacy.Pure.AdaptiveComposition
-import HopfieldNet.SampCert.DifferentialPrivacy.Pure.Postprocessing
-import HopfieldNet.SampCert.DifferentialPrivacy.Pure.Const
+import HopfieldNet.Attic.SampCert.DifferentialPrivacy.Abstract
+import HopfieldNet.Attic.SampCert.DifferentialPrivacy.Pure.DP
+import HopfieldNet.Attic.SampCert.DifferentialPrivacy.Pure.Mechanism.Basic
+import HopfieldNet.Attic.SampCert.DifferentialPrivacy.Pure.AdaptiveComposition
+import HopfieldNet.Attic.SampCert.DifferentialPrivacy.Pure.Postprocessing
+import HopfieldNet.Attic.SampCert.DifferentialPrivacy.Pure.Const
 
 /-!
 # Pure DP system

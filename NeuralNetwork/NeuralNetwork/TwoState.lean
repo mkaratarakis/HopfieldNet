@@ -1,5 +1,5 @@
 import Mathlib.Algebra.EuclideanDomain.Field
-import Mathlib.Data.Complex.Exponential
+import Mathlib.Analysis.Complex.Exponential
 import Mathlib.LinearAlgebra.Matrix.Symmetric
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
 import NeuralNetwork.NeuralNetwork.NeuralNetwork
@@ -407,6 +407,12 @@ lemma logisticProb_nonneg (x : ℝ) : 0 ≤ logisticProb x := by
   have hden : 0 < 1 + Real.exp (-x) := by linarith
   exact div_nonneg zero_le_one hden.le
 
+lemma logisticProb_pos (x : ℝ) : 0 < logisticProb x := by
+  unfold logisticProb
+  have hx : 0 < Real.exp (-x) := Real.exp_pos _
+  have hden : 0 < 1 + Real.exp (-x) := by linarith
+  exact (one_div_pos.mpr hden)
+
 lemma logisticProb_le_one (x : ℝ) : logisticProb x ≤ 1 := by
   unfold logisticProb
   have hx : 0 < Real.exp (-x) := Real.exp_pos _
@@ -414,6 +420,18 @@ lemma logisticProb_le_one (x : ℝ) : logisticProb x ≤ 1 := by
   have : 1 ≤ 1 + Real.exp (-x) := by
     linarith
   simpa using (div_le_one hden).mpr this
+
+lemma logisticProb_lt_one (x : ℝ) : logisticProb x < 1 := by
+  unfold logisticProb
+  have hx : 0 < Real.exp (-x) := Real.exp_pos _
+  have hden_pos : 0 < 1 + Real.exp (-x) := by linarith
+  have hden_gt : 1 < 1 + Real.exp (-x) := by linarith
+  -- `1/(den) < 1` since `1 < den` and `den > 0`
+  have : 1 / (1 + Real.exp (-x)) < 1 := by
+    -- `a / b < c ↔ a < c*b` for `0 < b`
+    refine (div_lt_iff₀ hden_pos).2 ?_
+    simpa [one_mul] using hden_gt
+  simpa using this
 
 /-- Probability P(σ_u = σ_pos) for one Gibbs update. -/
 noncomputable def probPos
@@ -437,6 +455,22 @@ lemma probPos_le_one
     (f : F) (p : Params NN) (T : Temperature) (s : NN.State) (u : U) :
     probPos (R:=R) (U:=U) (σ:=σ) (NN:=NN) f p T s u ≤ 1 := by
   unfold probPos; apply logisticProb_le_one
+
+lemma probPos_pos
+    {F} [FunLike F R ℝ]
+    {NN : NeuralNetwork R U σ} [TwoStateNeuralNetwork NN]
+    (f : F) (p : Params NN) (T : Temperature) (s : NN.State) (u : U) :
+    0 < probPos (R:=R) (U:=U) (σ:=σ) (NN:=NN) f p T s u := by
+  unfold probPos
+  exact logisticProb_pos _
+
+lemma probPos_lt_one
+    {F} [FunLike F R ℝ]
+    {NN : NeuralNetwork R U σ} [TwoStateNeuralNetwork NN]
+    (f : F) (p : Params NN) (T : Temperature) (s : NN.State) (u : U) :
+    probPos (R:=R) (U:=U) (σ:=σ) (NN:=NN) f p T s u < 1 := by
+  unfold probPos
+  exact logisticProb_lt_one _
 
 /-- Force neuron u to σ_pos. -/
 def updPos {NN : NeuralNetwork R U σ} [TwoStateNeuralNetwork NN]
@@ -698,6 +732,17 @@ open Finset Matrix NeuralNetwork State Constants Temperature Filter Topology
 open scoped ENNReal NNReal BigOperators
 open NeuralNetwork
 namespace TwoState
+
+/-- Exclusivity predicate (generic scalar): the allowed activations are precisely `σ_pos` or `σ_neg`. -/
+class TwoStateExclusiveR
+    {R U σ} [Field R] [LinearOrder R] [IsStrictOrderedRing R]
+    (NN : NeuralNetwork R U σ)
+    [TwoStateNeuralNetwork NN] : Prop where
+  pact_iff : ∀ a, NN.pact a ↔
+      a = TwoStateNeuralNetwork.σ_pos (NN := NN) ∨
+      a = TwoStateNeuralNetwork.σ_neg (NN := NN)
+
+attribute [simp] TwoStateExclusiveR.pact_iff
 
 
 lemma updPos_eq_self_of_act_pos

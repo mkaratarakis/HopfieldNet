@@ -95,6 +95,28 @@ class TwoStateExclusive
 
 attribute [simp] TwoStateExclusive.pact_iff
 
+/-!
+### Consolidation with the `R`-generic exclusivity predicate
+
+The file `NeuralNetwork/NeuralNetwork/TwoState.lean` also defines an `R`-generic predicate
+`TwoStateExclusiveR`. For `R = ℝ` these notions coincide; we provide instances both ways so
+`TwoStateExclusive` can be used interchangeably with `TwoStateExclusiveR`.
+-/
+
+instance
+    {U σ} (NN : NeuralNetwork ℝ U σ) [TwoStateNeuralNetwork NN] [TwoStateExclusive NN] :
+    TwoStateExclusiveR (NN := NN) where
+  pact_iff := by
+    intro a
+    simp
+
+instance
+    {U σ} (NN : NeuralNetwork ℝ U σ) [TwoStateNeuralNetwork NN] [TwoStateExclusiveR (NN := NN)] :
+    TwoStateExclusive NN where
+  pact_iff := by
+    intro a
+    simp
+
 /-- Instance: `SymmetricBinary` activations are exactly `{1,-1}`. -/
 instance (U) [Fintype U] [DecidableEq U] [Nonempty U] :
   TwoStateExclusive (TwoState.SymmetricBinary ℝ U) where
@@ -301,7 +323,7 @@ lemma hopfieldCE_meanEnergy_const
     simp [hZeq]
   simp_all only [neg_mul, Finset.sum_const, Finset.card_univ, nsmul_eq_mul, ne_eq, mul_eq_zero, Nat.cast_eq_zero,
     Fintype.card_ne_zero, Real.exp_ne_zero, or_self, not_false_eq_true, toCanonicalEnsemble_energy, integral_const,
-    measureReal_univ_eq_one, smul_eq_mul, one_mul, 𝓒]
+    probReal_univ, smul_eq_mul, one_mul, 𝓒]
 
 -- Inheritance showcase: canonical–ensemble facts usable for Hopfield networks.
 section CanonicalEnsembleInheritanceExamples

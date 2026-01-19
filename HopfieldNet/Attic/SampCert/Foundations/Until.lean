@@ -3,8 +3,8 @@ Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Jean-Baptiste Tristan
 -/
-import HopfieldNet.SampCert.Foundations.While
-import HopfieldNet.SampCert.Util.Util
+import HopfieldNet.Attic.SampCert.Foundations.While
+import HopfieldNet.Attic.SampCert.Util.Util
 
 /-!
 # ``probUntil`` Properties
