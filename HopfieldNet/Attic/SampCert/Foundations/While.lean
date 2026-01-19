@@ -3,9 +3,9 @@ Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Jean-Baptiste Tristan
 -/
-import HopfieldNet.SampCert.SLang
-import HopfieldNet.SampCert.Foundations.Monad
-import HopfieldNet.SampCert.Foundations.Auto
+import HopfieldNet.Attic.SampCert.SLang
+import HopfieldNet.Attic.SampCert.Foundations.Monad
+import HopfieldNet.Attic.SampCert.Foundations.Auto
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
 
 /-!
@@ -42,7 +42,7 @@ theorem probWhileCut_monotonic (cond : T → Bool) (body : T → SLang T)
       simp
       apply ENNReal.tsum_le_tsum
       intro a
-      apply mul_le_mul_left'
+      apply mul_le_mul_right
       exact IH a
     · simp
 

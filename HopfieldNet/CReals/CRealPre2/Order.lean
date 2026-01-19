@@ -81,8 +81,7 @@ lemma le_well_defined_forward
     calc
       x₂.approx k ≤ x₁.approx k + 1/2^(k-1) := h2
       _ ≤ (y₁.approx k + 1/2^(k-1)) + 1/2^(k-1) := by
-        linarith
-            --exact add_le_add_right h_hyp _
+            exact Rat.add_le_add_right.mpr h_hyp
       _ = y₁.approx k + (1/2^(k-1) + 1/2^(k-1)) := by ring_nf
       _ = y₁.approx k + 2 / 2^(k-1) := by ring_nf
   have h_mid' : x₂.approx k ≤ y₂.approx k + 3 / 2^(k-1) := by
@@ -112,8 +111,7 @@ lemma le_well_defined_forward
       rw [add_assoc] at step1
       rw [h_two_halves] at step1
       exact step1
-    linarith
-    --exact add_le_add_right step1a (3 / 2^(k-1))
+    exact Rat.add_le_add_right.mpr step1a
   have h_two : (2 : ℚ) / 2^(n+1) = (1 : ℚ) / 2^n := by
     field_simp [pow_succ]; ring
   calc
@@ -127,88 +125,9 @@ lemma le_well_defined_forward
           linarith
 
 lemma le_well_defined_backward
-    {x₁ x₂ y₁ y₂ : CReal.Pre}
-    (hx : CReal.Pre.Equiv x₁ x₂) (hy : CReal.Pre.Equiv y₁ y₂)
-    (h_le : CReal.Pre.le x₂ y₂) : CReal.Pre.le x₁ y₁ := by
-  intro n
-  apply le_of_forall_pos_le_add
-  intro ε hε
-  obtain ⟨m, hm_bound⟩ := find_index_for_bound (by norm_num : 0 < (3 : ℚ)) hε
-  let k := max (n+1) (m+1)
-  have h_n_le_k : n+1 ≤ k := le_max_left _ _
-  have h_m_le_k : m+1 ≤ k := le_max_right _ _
-  have h_k_sub_1_ge_m : m ≤ k-1 := Nat.le_sub_of_add_le h_m_le_k
-  have hkpos : 1 ≤ k := le_trans (Nat.succ_le_succ (Nat.zero_le _)) h_n_le_k
-  have hk1 : (k - 1) + 1 = k := Nat.sub_add_cancel hkpos
-  have h_error_bound : 3 / 2^(k-1) < ε := by
-    have h_pow_bound : (2:ℚ)^m ≤ 2^(k-1) :=
-      (pow_le_pow_iff_right₀ rfl).mpr h_k_sub_1_ge_m
-    have h_div_le : (3:ℚ) / 2^(k-1) ≤ 3 / 2^m := by
-      have hc : 0 < (2 : ℚ) ^ m := pow_pos (by norm_num) m
-      exact div_le_div_of_le_left (by norm_num) hc h_pow_bound
-    linarith [hm_bound]
-  have h_hyp0 := h_le (k-1)
-  have h_hyp : x₂.approx k ≤ y₂.approx k + 1 / 2^(k-1) := by
-    simpa [hk1] using h_hyp0
-  have hx_equiv := hx (k-1)
-  have hy_equiv := hy (k-1)
-  have hx_reg : |x₁.approx (n+1) - x₁.approx k| ≤ 1/2^(n+1) :=
-    x₁.is_regular (n+1) k h_n_le_k
-  have hy_reg : |y₁.approx (n+1) - y₁.approx k| ≤ 1/2^(n+1) :=
-    y₁.is_regular (n+1) k h_n_le_k
-  have h1 : x₁.approx (n+1) ≤ x₁.approx k + 1/2^(n+1) := by
-    have h := (abs_sub_le_iff).1 hx_reg
-    linarith [h.left]
-  have h2 : x₁.approx k ≤ x₂.approx k + 1/2^(k-1) := by
-    have h := (abs_sub_le_iff).1 hx_equiv
-    have h' : x₁.approx k - x₂.approx k ≤ 1 / 2 ^ (k - 1) := by
-      simpa [hk1] using h.left
-    linarith
-  have h4 : y₂.approx k ≤ y₁.approx k + 1/2^(k-1) := by
-    have h := (abs_sub_le_iff).1 hy_equiv
-    have h' : y₂.approx k - y₁.approx k ≤ 1 / 2 ^ (k - 1) := by
-      simpa [hk1] using h.right
-    linarith
-  have h5 : y₁.approx k ≤ y₁.approx (n+1) + 1/2^(n+1) := by
-    have h := (abs_sub_le_iff).1 hy_reg
-    linarith [h.left]
-  have h_mid : x₁.approx k ≤ y₂.approx k + 2 / 2^(k-1) := by
-    calc
-      x₁.approx k ≤ x₂.approx k + 1/2^(k-1) := h2
-      _ ≤ (y₂.approx k + 1/2^(k-1)) + 1/2^(k-1) := by linarith
-            --exact add_le_add_right h_hyp _
-      _ = y₂.approx k + (1/2^(k-1) + 1/2^(k-1)) := by ring
-      _ = y₂.approx k + 2 / 2^(k-1) := by ring
-  have h_mid' : x₁.approx k ≤ y₁.approx k + 3 / 2^(k-1) := by
-    calc
-      x₁.approx k ≤ y₂.approx k + 2 / 2^(k-1) := h_mid
-      _ ≤ y₁.approx k + 1/2^(k-1) + 2 / 2^(k-1) := by linarith --add_le_add_right h4 _
-      _ = y₁.approx k + 3 / 2^(k-1) := by field_simp; ring
-  have h_le_to_k :
-      x₁.approx (n+1) ≤ y₁.approx k + 1/2^(n+1) + 3 / 2^(k-1) := by
-    have step := add_le_add_right h_mid' (1 / 2^(n+1))
-    exact le_trans h1 (by simpa [add_comm, add_left_comm, add_assoc] using step)
-  have h_to_target :
-      y₁.approx k + 1/2^(n+1) + 3 / 2^(k-1)
-        ≤ y₁.approx (n+1) + 2/2^(n+1) + 3 / 2^(k-1) := by
-    have step1 : y₁.approx k + 1/2^(n+1)
-                 ≤ y₁.approx (n+1) + 1/2^(n+1) + 1/2^(n+1) := by
-      simpa [add_comm, add_left_comm, add_assoc] using
-        add_le_add_right h5 (1 / 2^(n+1))
-    have step2 := add_le_add_right step1 (3 / 2^(k-1))
-    have h_rhs : y₁.approx (n+1) + 1/2^(n+1) + 1/2^(n+1) + 3 / 2^(k-1) = y₁.approx (n+1) + 2/2^(n+1) + 3 / 2^(k-1) := by ring
-    linarith
-  have h_two : (2 : ℚ) / 2^(n+1) = (1 : ℚ) / 2^n := by
-    field_simp [pow_succ]; ring
-  calc
-    x₁.approx (n+1)
-        ≤ y₁.approx (n+1) + 2/2^(n+1) + 3/2^(k-1) := by
-          exact (le_trans h_le_to_k h_to_target)
-    _ = y₁.approx (n+1) + 1/2^n + 3/2^(k-1) := by
-          simp [h_two]
-    _ ≤ y₁.approx (n+1) + 1/2^n + ε := by
-          have h_err_le : 3 / 2^(k-1) ≤ ε := le_of_lt h_error_bound
-          linarith
+    {x₁ x₂ y₁ y₂ : CReal.Pre} (hx : CReal.Pre.Equiv x₁ x₂) (hy : CReal.Pre.Equiv y₁ y₂)
+    (h_le : CReal.Pre.le x₂ y₂) : CReal.Pre.le x₁ y₁ :=
+  le_well_defined_forward (Pre.equiv_symm hx) (Pre.equiv_symm hy) h_le
 
 /--
 The order relation respects equivalence.
@@ -445,7 +364,7 @@ theorem Pre.pos_well_defined (x y : CReal.Pre) (hxy : CReal.Pre.Equiv x y) :
     let M := N + 2
     let K := M + 1
     have hN1_le_K : N + 1 ≤ K := by
-      dsimp [K, M]; linarith--exact add_le_add_left (by decide : 1 ≤ 3) N
+      dsimp [K, M]; exact Nat.add_le_add_left (by decide : 1 ≤ 3) N
     have h_reg := x.is_regular (N + 1) K hN1_le_K
     have hx := (abs_sub_le_iff).1 h_reg
     have h_xK_ge : x.approx K ≥ x.approx (N + 1) - 1 / 2 ^ (N + 1) := by
@@ -497,7 +416,7 @@ theorem Pre.pos_well_defined (x y : CReal.Pre) (hxy : CReal.Pre.Equiv x y) :
     let M := N + 2
     let K := M + 1
     have hN1_le_K : N + 1 ≤ K := by
-      dsimp [K, M]; linarith--exact add_le_add_left (by decide : 1 ≤ 3) N
+      dsimp [K, M]; exact Nat.add_le_add_left (by decide : 1 ≤ 3) N
     have h_reg := y.is_regular (N + 1) K hN1_le_K
     have hy := (abs_sub_le_iff).1 h_reg
     have h_yK_ge : y.approx K ≥ y.approx (N + 1) - 1 / 2 ^ (N + 1) := by
@@ -1060,9 +979,7 @@ theorem mul_le_mul_of_nonneg_right' (a b c : CReal) (h : a ≤ b) (hc : 0 ≤ c)
   exact mul_le_mul_of_nonneg_left' a b c h hc
 
 instance : IsOrderedRing CReal where
-  add_le_add_left := by
-    intro a b h c
-    simp_all only [add_le_add_iff_right]
+  add_le_add_left := fun a b a_1 c ↦ _root_.add_le_add_left a_1 c
   zero_le_one := zero_le_one
   mul_le_mul_of_nonneg_left := by
     intro a ha b c hbc
@@ -1238,13 +1155,12 @@ instance : Archimedean CReal := by
   have hBx_plus : (Bx : ℚ) + δ ≤ (n : ℚ) * δ := by
     have h_sum : (Nat.ceil ((Bx : ℚ) / δ) : ℚ) * δ + δ
         = ((Nat.ceil ((Bx : ℚ) / δ) + 1 : ℕ) : ℚ) * δ := by
-      have : ((Nat.ceil ((Bx : ℚ) / δ) : ℚ) + 1) * δ
-          = ((Nat.ceil ((Bx : ℚ) / δ) + 1 : ℕ) : ℚ) * δ := by
-        simp [Nat.cast_add, add_mul, one_mul]
-      simp [add_mul, one_mul]
+      simp [Nat.cast_add, add_mul, one_mul]
     have := add_le_add_right hBx_base δ
-    linarith
-    --simpa [n, h_sum, Nat.cast_add, Nat.cast_ofNat] using this
+    rw [add_comm] at this
+    calc (Bx : ℚ) + δ ≤ (Nat.ceil ((Bx : ℚ) / δ) : ℚ) * δ + δ := by linarith
+      _ = ((Nat.ceil ((Bx : ℚ) / δ) + 1 : ℕ) : ℚ) * δ := h_sum
+      _ = (n : ℚ) * δ := by rfl
   have h_nsmul_lower :
       (n : ℚ) * δ ≤ (CReal.Pre.nsmul n y_pre).approx (K + 1) := by
     apply nsmul_approx_lower_bound (y := y_pre) (δ := δ) (m := K + 1) (n := n)

@@ -12,8 +12,6 @@ variable {AQ : Type} [ApproxRationals AQ]
 We define `≤` and `<` on `CRealAQ AQ` by pulling back the order on the
 specification quotient `CReal` along the denotation map `toCReal`.
 
-This file is intentionally *noncomputable*: it is for convenient reasoning and
-algebraic structure. The computational content remains in the rep-level library.
 -/
 
 instance : LE (CRealAQ AQ) :=
@@ -106,8 +104,7 @@ theorem zero_le_one : (0 : CRealAQ AQ) ≤ (1 : CRealAQ AQ) := by
 instance : IsOrderedRing (CRealAQ AQ) where
   add_le_add_left := by
     intro a b hab c
-    aesop
-    --exact add_le_add_left' (AQ := AQ) a b hab c
+    simp_all only [le_def, toCReal_add, add_le_add_iff_right]
   zero_le_one := zero_le_one (AQ := AQ)
   mul_le_mul_of_nonneg_left := by
     intro c hc a b hab

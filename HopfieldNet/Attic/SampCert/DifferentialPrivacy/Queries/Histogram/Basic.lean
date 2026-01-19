@@ -4,5 +4,5 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Jean-Baptiste Tristan
 -/
 
-import HopfieldNet.SampCert.DifferentialPrivacy.Queries.Histogram.Code
-import HopfieldNet.SampCert.DifferentialPrivacy.Queries.Histogram.Properties
+import HopfieldNet.Attic.SampCert.DifferentialPrivacy.Queries.Histogram.Code
+import HopfieldNet.Attic.SampCert.DifferentialPrivacy.Queries.Histogram.Properties

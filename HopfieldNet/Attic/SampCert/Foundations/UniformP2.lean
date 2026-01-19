@@ -3,13 +3,13 @@ Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Jean-Baptiste Tristan
 -/
-import HopfieldNet.SampCert.SLang
+import HopfieldNet.Attic.SampCert.SLang
 import Mathlib.Probability.Distributions.Uniform
 import Mathlib.Data.Nat.Log
-import HopfieldNet.SampCert.Util.Util
-import HopfieldNet.SampCert.Foundations.Monad
-import HopfieldNet.SampCert.Foundations.Auto
-import HopfieldNet.SampCert.Foundations.UniformByte
+import HopfieldNet.Attic.SampCert.Util.Util
+import HopfieldNet.Attic.SampCert.Foundations.Monad
+import HopfieldNet.Attic.SampCert.Foundations.Auto
+import HopfieldNet.Attic.SampCert.Foundations.UniformByte
 
 /-!
 # ``probUniformP2`` Properties

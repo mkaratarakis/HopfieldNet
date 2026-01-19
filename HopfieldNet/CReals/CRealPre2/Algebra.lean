@@ -1,5 +1,7 @@
 import HopfieldNet.CReals.CRealPre2.PreBasics
 
+open Nat
+
 namespace Computable
 /--
 The type of computable real numbers.
@@ -165,9 +167,7 @@ protected def Pre.mul (x y : CReal.Pre) : CReal.Pre where
     intro n m hnm
     let S := x.mulShift y
     let kₙ := n + S; let kₘ := m + S
-    have hknm : kₙ ≤ kₘ := by
-      dsimp [kₙ, kₘ]
-      linarith
+    have hknm : kₙ ≤ kₘ := Nat.add_le_add_right hnm S
     let Bx := x.cBound; let By := y.cBound
     have h_core := product_diff_bound x y hknm (Bx:ℚ) (By:ℚ) (x.abs_approx_le_cBound kₙ) (y.abs_approx_le_cBound kₘ)
     have h_S := x.sum_cBound_le_pow_mulShift y
@@ -294,9 +294,7 @@ lemma mul_regularity_bound
   set S := x.mulShift y
   let ks   := k_small + S
   let kbS  := k_big + S
-  have h_le' : ks ≤ kbS := by
-    dsimp [ks, kbS]
-    linarith
+  have h_le' : ks ≤ kbS := Nat.add_le_add_right h_le S
   have h_core :=
     product_diff_bound x y h_le' (x.cBound) (y.cBound)
       (x.abs_approx_le_cBound ks) (y.abs_approx_le_cBound kbS)
@@ -843,6 +841,7 @@ lemma ternary_product_diff_bound
       exact add_le_add term1 term2
     _ = (Ba*Bc + Bb*Bc + Ba*Bb) * (1 / 2 ^ kₙ) := by ring_nf
 
+set_option maxHeartbeats 400000 in
 /--
 Provides a bound on the difference between the two ways of associating a product.
 |((a*b)*c)ₖ - (a*(b*c))ₖ| ≤ B_assoc / 2ᵏ.
@@ -861,9 +860,7 @@ lemma mul_assoc_bound (a b c : CReal.Pre) (k : ℕ) :
     have h_ab_diff : |(a.mul b).approx K1 - a.approx K1 * b.approx K1| ≤ (Ba+Bb) / 2^K1 := by
       dsimp [CReal.Pre.mul]
       let Sab := a.mulShift b; let K_ab := K1 + Sab
-      have h_le : K1 ≤ K_ab := by
-        dsimp [K1, K_ab]
-        linarith
+      have h_le : K1 ≤ K_ab := Nat.le_add_right _ _
       rw [abs_sub_comm]
       have h_core := product_diff_bound a b h_le Ba Bb (a.abs_approx_le_cBound K1) (b.abs_approx_le_cBound K_ab)
       exact (le_trans h_core (by simp only [one_div]; exact Rat.le_refl))
@@ -960,19 +957,8 @@ lemma mul_assoc_bound (a b c : CReal.Pre) (k : ℕ) :
     apply div_le_div_of_le_left (by positivity) (by positivity)
     exact (pow_le_pow_iff_right₀ rfl).mpr h_minK_ge_k
   have h_bound3_weak : Ba * (Bb+Bc) / 2^K2 ≤ Ba * (Bb+Bc) / 2^k := by
-    apply div_le_div_of_le_left (?_) (?_)
-    · dsimp [K2, S2]
-      rw [pow_le_pow_iff_right₀]
-      simp only [le_add_iff_nonneg_right, zero_le]
-      simp only [Nat.one_lt_ofNat]
-    · simp only at h_bound1_weak
-      dsimp [Ba, Bb, Bc]
-      apply mul_nonneg
-      · simp only [Nat.cast_nonneg]
-      · apply add_nonneg
-        · simp only [Nat.cast_nonneg]
-        · simp only [Nat.cast_nonneg]
-    · simp only [Nat.ofNat_pos, pow_pos]
+    apply div_le_div_of_le_left (by positivity) (by positivity)
+    exact (pow_le_pow_iff_right₀ rfl).mpr h_K2_ge_k
   calc
     |P1.approx k - P2.approx k|
       ≤ |P1.approx k - a.approx K1 * b.approx K1 * c.approx K1|

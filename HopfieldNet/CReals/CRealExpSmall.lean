@@ -1,3 +1,4 @@
+
 import HopfieldNet.CReals.CRealPre2
 
 namespace Computable
@@ -41,6 +42,7 @@ lemma le_factorial (n : ℕ) : n ≤ Nat.factorial n := by
       have hmul : n.succ * 1 ≤ n.succ * Nat.factorial n := Nat.mul_le_mul_left _ hfac1
       simpa [Nat.factorial_succ] using hmul
 
+set_option maxHeartbeats 0 in
 /--
 Power-difference estimate on `[-1/2,1/2]`:
 
@@ -88,7 +90,7 @@ lemma abs_pow_succ_sub_pow_succ_le
         _ ≤ (1/2 : ℚ)^(k+1) * |x - y| +
               ((k+1 : ℚ) * (1/2 : ℚ)^k * |x - y|) * (1/2 : ℚ) := by
               -- `add_le_add_left` in this file's namespace is for `CReal`; use the root lemma for `ℚ`.
-              --refine _root_.add_le_add_left ?_ _
+              refine Rat.add_le_add_left.mpr ?_
               -- use `|y| ≤ 1/2` and nonnegativity of the other factor
               simpa [mul_assoc, mul_left_comm, mul_comm] using
                 (mul_le_mul_of_nonneg_left hy hA_nonneg)
@@ -323,8 +325,6 @@ theorem expSmall_congr [Pre.SmallExpModulus]
         (Pre.small_exp (y.pre.approx (n + 6)) (y.bound (n + 6))).approx (n + 3)| ≤ (1 : ℚ) / 2 ^ n :=
     hout.trans (hmono3.trans hmono4)
   simpa [CReal.lim_pre, expSmallSeq, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using hout'
-
-#eval (small_exp (1/4 : ℚ) (by norm_num)).approx 5  -- Example evaluation
 
 end CReal
 end Computable

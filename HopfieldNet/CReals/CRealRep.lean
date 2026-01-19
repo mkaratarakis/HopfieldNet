@@ -332,11 +332,9 @@ protected def addC (x y : CRealRep AQ) : CRealRep AQ where
       have := one_div_le_one_div_of_le hpos hpow
       simpa [one_div, div_eq_mul_inv] using this
     have hm_round' : |sm - b| ≤ (1 : ℚ) / (2 ^ (n + 2)) := hm_round.trans h_pow_mon
-    have hsum : |a - sn| + |sn - sm| + |sm - b| ≤ (1 : ℚ) / (2 ^ (n + 2)) +
-        (1 : ℚ) / (2 ^ (n + 1)) + (1 : ℚ) / (2 ^ (n + 2)) := by
+    have hsum : |a - sn| + |sn - sm| + |sm - b| ≤ (1 : ℚ) / (2 ^ (n + 2)) + (1 : ℚ) / (2 ^ (n + 1)) + (1 : ℚ) / (2 ^ (n + 2)) := by
       linarith [hn_round, hmid, hm_round']
-    have hclose : (1 : ℚ) / (2 ^ (n + 2)) + (1 : ℚ) / (2 ^ (n + 1)) +
-        (1 : ℚ) / (2 ^ (n + 2)) ≤ (1 : ℚ) / (2 ^ n) := by
+    have hclose : (1 : ℚ) / (2 ^ (n + 2)) + (1 : ℚ) / (2 ^ (n + 1)) + (1 : ℚ) / (2 ^ (n + 2)) ≤ (1 : ℚ) / (2 ^ n) := by
       -- `1/2^(n+1) + 2/2^(n+2) = 1/2^n`.
       ring_nf
       have : (1 : ℚ) / (2 ^ (n + 1)) + (1 : ℚ) / (2 ^ (n + 1)) = (1 : ℚ) / (2 ^ n) := by
@@ -360,8 +358,7 @@ protected def mulC (x y : CRealRep AQ) : CRealRep AQ where
     set pn : ℚ := ApproxRationals.toRat (x.approx (n + 2 + S) * y.approx (n + 2 + S))
     set pm : ℚ := ApproxRationals.toRat (x.approx (m + 2 + S) * y.approx (m + 2 + S))
     have hn_round : |a - pn| ≤ (1 : ℚ) / (2 ^ (n + 2)) := by
-      simpa [a, pn] using (ApproxRationals.abs_toRat_approx_sub_le (AQ := AQ)
-         (x.approx (n + 2 + S) * y.approx (n + 2 + S)) (n + 2))
+      simpa [a, pn] using (ApproxRationals.abs_toRat_approx_sub_le (AQ := AQ) (x.approx (n + 2 + S) * y.approx (n + 2 + S)) (n + 2))
     have hm_round : |pm - b| ≤ (1 : ℚ) / (2 ^ (m + 2)) := by
       have := (ApproxRationals.abs_toRat_approx_sub_le (AQ := AQ) (x.approx (m + 2 + S) * y.approx (m + 2 + S)) (m + 2))
       simpa [abs_sub_comm, b, pm] using this
@@ -393,11 +390,9 @@ protected def mulC (x y : CRealRep AQ) : CRealRep AQ where
       have := one_div_le_one_div_of_le hpos hpow
       simpa [one_div, div_eq_mul_inv] using this
     have hm_round' : |pm - b| ≤ (1 : ℚ) / (2 ^ (n + 2)) := hm_round.trans h_pow_mon
-    have hsum : |a - pn| + |pn - pm| + |pm - b| ≤ (1 : ℚ) / (2 ^ (n + 2))
-        + (1 : ℚ) / (2 ^ (n + 1)) + (1 : ℚ) / (2 ^ (n + 2)) := by
+    have hsum : |a - pn| + |pn - pm| + |pm - b| ≤ (1 : ℚ) / (2 ^ (n + 2)) + (1 : ℚ) / (2 ^ (n + 1)) + (1 : ℚ) / (2 ^ (n + 2)) := by
       linarith [hn_round, hmid, hm_round']
-    have hclose : (1 : ℚ) / (2 ^ (n + 2)) + (1 : ℚ) / (2 ^ (n + 1)) +
-        (1 : ℚ) / (2 ^ (n + 2)) ≤ (1 : ℚ) / (2 ^ n) := by
+    have hclose : (1 : ℚ) / (2 ^ (n + 2)) + (1 : ℚ) / (2 ^ (n + 1)) + (1 : ℚ) / (2 ^ (n + 2)) ≤ (1 : ℚ) / (2 ^ n) := by
       ring_nf
       -- same as in `addC`
       have : (1 : ℚ) / (2 ^ (n + 1)) + (1 : ℚ) / (2 ^ (n + 1)) = (1 : ℚ) / (2 ^ n) := by
@@ -448,11 +443,9 @@ protected def invC (x : CRealRep AQ) (W : CReal.Pre.InvWitness x.toPre) : CRealR
       have := one_div_le_one_div_of_le hpos hpow
       simpa [one_div, div_eq_mul_inv] using this
     have hm_round' : |qm - b| ≤ (1 : ℚ) / (2 ^ (n + 2)) := hm_round.trans h_pow_mon
-    have hsum : |a - qn| + |qn - qm| + |qm - b| ≤ (1 : ℚ) / (2 ^ (n + 2))
-         + (1 : ℚ) / (2 ^ (n + 1)) + (1 : ℚ) / (2 ^ (n + 2)) := by
+    have hsum : |a - qn| + |qn - qm| + |qm - b| ≤ (1 : ℚ) / (2 ^ (n + 2)) + (1 : ℚ) / (2 ^ (n + 1)) + (1 : ℚ) / (2 ^ (n + 2)) := by
       linarith [hn_round, hmid, hm_round']
-    have hclose : (1 : ℚ) / (2 ^ (n + 2)) + (1 : ℚ) / (2 ^ (n + 1))
-         + (1 : ℚ) / (2 ^ (n + 2)) ≤ (1 : ℚ) / (2 ^ n) := by
+    have hclose : (1 : ℚ) / (2 ^ (n + 2)) + (1 : ℚ) / (2 ^ (n + 1)) + (1 : ℚ) / (2 ^ (n + 2)) ≤ (1 : ℚ) / (2 ^ n) := by
       ring_nf
       have : (1 : ℚ) / (2 ^ (n + 1)) + (1 : ℚ) / (2 ^ (n + 1)) = (1 : ℚ) / (2 ^ n) := by
         simp [pow_succ, div_eq_mul_inv]; ring
@@ -529,8 +522,7 @@ theorem toPre_addC_equiv (x y : CRealRep AQ) :
   set c : ℚ := (CReal.Pre.add x.toPre y.toPre).approx (n + 2)
   have h_round : |a - c| ≤ (1 : ℚ) / (2 ^ (n + 3)) := by
     -- `a` rounds the sum at precision `n+3`
-    simpa [CRealRep.addC, CRealRep.toPre, a, c, CReal.Pre.add,
-      Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
+    simpa [CRealRep.addC, CRealRep.toPre, a, c, CReal.Pre.add, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
       (ApproxRationals.abs_toRat_approx_sub_le (AQ := AQ) (x.approx (n + 3) + y.approx (n + 3)) (n + 3))
   have h_reg : |c - b| ≤ (1 : ℚ) / (2 ^ (n + 1)) := by
     have := (CReal.Pre.add x.toPre y.toPre).is_regular (n + 1) (n + 2) (by omega)

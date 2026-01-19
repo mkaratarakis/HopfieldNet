@@ -76,7 +76,6 @@ lemma expPartial_lower_bound_at_four (x : ℚ) (hx : |x| ≤ (1/2 : ℚ)) :
 def sigmoidDenomPre (x : ℚ) (hx : |x| ≤ (1/2 : ℚ)) : CReal.Pre :=
   CReal.Pre.add CReal.Pre.one (small_exp (-x) (by simpa [abs_neg] using hx))
 
-/-- Witness that `1 + exp(-x)` is bounded away from `0` for `|x| ≤ 1/2`. -/
 def sigmoidDenom_witness (x : ℚ) (hx : |x| ≤ (1/2 : ℚ)) :
     CReal.Pre.InvWitness (sigmoidDenomPre x hx) := by
   -- take `N = 0`, so we need `1 < |approx 1|`
@@ -111,13 +110,12 @@ def sigmoidDenom_witness (x : ℚ) (hx : |x| ≤ (1/2 : ℚ)) :
 def small_sigmoid (x : ℚ) (hx : |x| ≤ (1/2 : ℚ)) : CReal.Pre :=
   CReal.Pre.inv (sigmoidDenomPre x hx) (sigmoidDenom_witness x hx)
 
-#eval (small_sigmoid (1/6 : ℚ) (by norm_num)).approx 10
-
 end Pre
 
 /-- Sigmoid on rationals for `|x| ≤ 1/2`. -/
 def sigmoidRatSmall (x : ℚ) (hx : |x| ≤ (1/2 : ℚ)) : CReal :=
   ⟦Pre.small_sigmoid x hx⟧
+
 
 end CReal
 end Computable

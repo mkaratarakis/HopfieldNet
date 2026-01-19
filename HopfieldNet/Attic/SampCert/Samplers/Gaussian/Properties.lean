@@ -3,15 +3,15 @@ Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Jean-Baptiste Tristan
 -/
-import HopfieldNet.SampCert.Foundations.Basic
-import HopfieldNet.SampCert.Samplers.Uniform.Basic
-import HopfieldNet.SampCert.Samplers.Bernoulli.Basic
-import HopfieldNet.SampCert.Samplers.BernoulliNegativeExponential.Basic
-import HopfieldNet.SampCert.Samplers.Laplace.Basic
+import HopfieldNet.Attic.SampCert.Foundations.Basic
+import HopfieldNet.Attic.SampCert.Samplers.Uniform.Basic
+import HopfieldNet.Attic.SampCert.Samplers.Bernoulli.Basic
+import HopfieldNet.Attic.SampCert.Samplers.BernoulliNegativeExponential.Basic
+import HopfieldNet.Attic.SampCert.Samplers.Laplace.Basic
 import Mathlib.NumberTheory.ModularForms.JacobiTheta.OneVariable
-import HopfieldNet.SampCert.Util.UtilMathlib
-import HopfieldNet.SampCert.Samplers.Gaussian.Code
-import HopfieldNet.SampCert.Util.Gaussian.DiscreteGaussian
+import HopfieldNet.Attic.SampCert.Util.UtilMathlib
+import HopfieldNet.Attic.SampCert.Samplers.Gaussian.Code
+import HopfieldNet.Attic.SampCert.Util.Gaussian.DiscreteGaussian
 
 /-!
 # ``DiscreteGaussianSample`` Properties

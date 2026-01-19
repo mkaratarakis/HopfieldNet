@@ -4,5 +4,5 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Jean-Baptiste Tristan
 -/
 
-import HopfieldNet.SampCert.Samplers.Bernoulli.Code
-import HopfieldNet.SampCert.Samplers.Bernoulli.Properties
+import HopfieldNet.Attic.SampCert.Samplers.Bernoulli.Code
+import HopfieldNet.Attic.SampCert.Samplers.Bernoulli.Properties
