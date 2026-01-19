@@ -6,6 +6,7 @@ import NeuralNetwork.NeuralNetwork.FastChecks
 import NeuralNetwork.NeuralNetwork.FastCertificates
 import NeuralNetwork.NeuralNetwork.FastSampling
 import NeuralNetwork.NeuralNetwork.FastTrace
+import NeuralNetwork.NeuralNetwork.FastThermodynamics
 
 /-!
 # Demo: end-to-end executable Gibbs probabilities (FastReal)
@@ -86,6 +87,16 @@ def sPos : (NN).State := TwoState.updPos (NN := NN) s (0 : U)
 
 -- Full Boltzmann vector (length 4) at precision `n = 10`.
 #eval (NeuralNetwork.FastMarkovMatrix.boltzmannVec? (U := U) β p) 10
+
+-- Thermodynamics (interval-certified, partial):
+-- log Z at precision `n = 10`
+#eval (NeuralNetwork.FastThermodynamics.logPartition? (U := U) β p) 10
+
+-- Free energy in β-units: F = -log Z / β  (kB = 1, T = 1/β)
+#eval (NeuralNetwork.FastThermodynamics.freeEnergyBeta? (U := U) β p) 10
+
+-- Shannon entropy (kB = 1): S = -∑ p log p
+#eval (NeuralNetwork.FastThermodynamics.shannonEntropy? (U := U) β p) 10
 
 -- Row-sum sanity check: each row sum should enclose 1.
 #eval (do
