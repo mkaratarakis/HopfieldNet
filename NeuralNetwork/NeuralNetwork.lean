@@ -29,6 +29,9 @@ import NeuralNetwork.NeuralNetwork.FastBoltzmannEval
 import NeuralNetwork.NeuralNetwork.FastMarkovMatrix
 import NeuralNetwork.NeuralNetwork.FastChecks
 import NeuralNetwork.NeuralNetwork.FastCertificates
+import NeuralNetwork.NeuralNetwork.FastSampling
+import NeuralNetwork.NeuralNetwork.FastTrace
+import NeuralNetwork.NeuralNetwork.ToRealInstances
 import NeuralNetwork.NeuralNetwork.FastDemo
 import NeuralNetwork.NeuralNetwork.HopfieldBoltzmannR
 import NeuralNetwork.NeuralNetwork.PMFMatrix

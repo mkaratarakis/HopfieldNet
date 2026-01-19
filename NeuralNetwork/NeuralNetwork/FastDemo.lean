@@ -4,6 +4,8 @@ import NeuralNetwork.NeuralNetwork.FastBoltzmannEval
 import NeuralNetwork.NeuralNetwork.FastMarkovMatrix
 import NeuralNetwork.NeuralNetwork.FastChecks
 import NeuralNetwork.NeuralNetwork.FastCertificates
+import NeuralNetwork.NeuralNetwork.FastSampling
+import NeuralNetwork.NeuralNetwork.FastTrace
 
 /-!
 # Demo: end-to-end executable Gibbs probabilities (FastReal)
@@ -107,6 +109,46 @@ def sPos : (NN).State := TwoState.updPos (NN := NN) s (0 : U)
 
 -- Pack everything into a witness object (and verify it).
 #eval (NeuralNetwork.FastCertificates.findWitness? (U := U) β p 6 20 12)
+
+-- Sampling demo (returns an index in the state enumeration when precision is sufficient).
+#eval (do
+  let w ← (NeuralNetwork.FastCertificates.findWitness? (U := U) β p 6 20 12)
+  pure (NeuralNetwork.FastSampling.sampleInitIndex? w 12345 16))
+
+#eval (do
+  let w ← (NeuralNetwork.FastCertificates.findWitness? (U := U) β p 6 20 12)
+  let i ← (NeuralNetwork.FastSampling.sampleInitIndex? w 12345 16)
+  pure (NeuralNetwork.FastSampling.stepIndex? w i 54321 16))
+
+-- Retry sampling by increasing `bits` up to `maxIncr` times.
+#eval (do
+  let w ← (NeuralNetwork.FastCertificates.findWitness? (U := U) β p 6 20 12)
+  pure (NeuralNetwork.FastSampling.sampleInitIndexRetry? w 12345 8 16))
+
+#eval (do
+  let w ← (NeuralNetwork.FastCertificates.findWitness? (U := U) β p 6 20 12)
+  let i ← (NeuralNetwork.FastSampling.sampleInitIndexRetry? w 12345 8 16)
+  pure (NeuralNetwork.FastSampling.stepIndexRetry? w i 54321 8 16))
+
+-- Simulate a short trajectory of indices (length = steps+1).
+def simulateIndicesDemo? (steps : Nat) : Option (List Nat) := do
+  let w ← (NeuralNetwork.FastCertificates.findWitness? (U := U) β p 6 20 12)
+  let i0 ← (NeuralNetwork.FastSampling.sampleInitIndexRetry? w 12345 8 16)
+  let rec go (t : Nat) (i : Nat) : Option (List Nat) :=
+    match t with
+    | 0 => some [i]
+    | Nat.succ t' => do
+        let j ← (NeuralNetwork.FastSampling.stepIndexRetry? w i (54321 + 9973 * t') 8 16)
+        let rest ← go t' j
+        return i :: rest
+  go steps i0
+
+#eval simulateIndicesDemo? 10
+
+-- Same trajectory, rendered as activation lists (in site enumeration order).
+#eval (do
+  let idxs ← simulateIndicesDemo? 10
+  NeuralNetwork.FastTrace.traceToActLists? (U := U) idxs)
 
 end FastDemo
 end NeuralNetwork
