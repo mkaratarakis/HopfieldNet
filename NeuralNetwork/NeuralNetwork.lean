@@ -32,6 +32,8 @@ import NeuralNetwork.NeuralNetwork.FastCertificates
 import NeuralNetwork.NeuralNetwork.FastSampling
 import NeuralNetwork.NeuralNetwork.FastTrace
 import NeuralNetwork.NeuralNetwork.ToRealInstances
+import NeuralNetwork.NeuralNetwork.ErgodicityR
+import NeuralNetwork.NeuralNetwork.ThermodynamicsR
 import NeuralNetwork.NeuralNetwork.FastDemo
 import NeuralNetwork.NeuralNetwork.HopfieldBoltzmannR
 import NeuralNetwork.NeuralNetwork.PMFMatrix
