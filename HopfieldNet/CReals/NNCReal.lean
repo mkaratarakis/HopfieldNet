@@ -26,14 +26,21 @@ open Computable
 
 instance : LE CReal := by infer_instance
 
-instance instDecidableGeCReal (input θ : CReal) : Decidable (input ≥ θ) := by
-  --by_cases h : input ≥ θ
-  sorry
+/- NOTE: a `Decidable (input ≥ θ)` instance for `CReal` is fundamentally
+unprovable: comparison of computable reals is undecidable (deciding
+`θ ≤ input` when the two sides are equal requires an unbounded search).
+The network below is therefore the *specification* model: its threshold
+comparison is classical and the definition is `noncomputable`. Its
+executable twin — same weights and update sequences, with the total
+fuel-based ball-arithmetic comparison of `Computable.Fast.FastReal` —
+lives in `HopfieldNet/CReals/API/NNtest.lean`, and that is where the
+`#eval` computations run. -/
 
 /-- A 3x3 matrix of rational numbers. --/
 def test.M : Matrix (Fin 3) (Fin 3) CReal := Matrix.of ![![0,0, 4], ![ 1,0,0], ![ (-2), 3,0]]
 
-def test : NeuralNetwork Computable.CReal (Fin 3) where
+open scoped Classical in
+noncomputable def test : NeuralNetwork Computable.CReal (Fin 3) where
   Adj := test.M.Adj
   Ui := {0,1}
   Uo := {2}
@@ -53,12 +60,12 @@ def test : NeuralNetwork Computable.CReal (Fin 3) where
   κ1 u := 0
   κ2 u := 1
   fnet u w pred σ := ∑ v, w v * pred v
-  fact u input θ := if 0 ≤ input then 1 else 0
+  fact _u _curr net _θv := if 0 ≤ net then 1 else 0
   fout u act := act
   pact u := True
   hpact w _ _ σ θ _ pact u := pact u
 
-def wθ : Params test where
+noncomputable def wθ : Params test where
   w := Matrix.of ![![0,0, 4], ![ 1,0,0], ![ (-2), 3,0]]
   θ u := ⟨#[ 1], by
     simp only [List.size_toArray, List.length_cons, List.length_nil, zero_add]
@@ -69,23 +76,18 @@ def wθ : Params test where
   hw' := by simp only [test]
 
 
-instance : Repr (NeuralNetwork.State test) where
-  reprPrec state _ :=
-   ("acts: " ++ repr (state.act)) ++ ", outs: " ++
-        repr (state.out) ++ ", nets: " ++ repr (state.net wθ)
-
 /--
 `test.extu` is the initial state for the `test` neural network with activations `[1, 0, 0]`.
 -/
-def test.extu : test.State := {act := ![1,0,0], hp := fun u => trivial}
+noncomputable def test.extu : test.State := {act := ![1,0,0], hp := fun u => trivial}
 
 lemma zero_if_not_mem_Ui : ∀ u : Fin 3,
-  ¬ u ∈ ({0,1} : Finset (Fin 3)) → test.extu.act u = 0 := by {
-    intros u hu
-    simp only [Fin.isValue, mem_insert, mem_singleton, not_or] at hu
-    cases hu
-    sorry
-  }
+  ¬ u ∈ ({0,1} : Finset (Fin 3)) → test.extu.act u = 0 := by
+  intro u hu
+  fin_cases u
+  · exact absurd (by simp) hu
+  · exact absurd (by simp) hu
+  · rfl
 
 /--If `u` is not in the input neurons `Ui`, then `test.extu.act u` is zero.-/
 lemma test.onlyUi : test.extu.onlyUi := by {
@@ -94,11 +96,11 @@ lemma test.onlyUi : test.extu.onlyUi := by {
   simp only [Fin.isValue, mem_insert, mem_singleton, not_or]
   exact not_or.mp hu}
 
-/-The workphase for the asynchronous update of the sequence of neurons u3 , u1 , u2 , u3 , u1 , u2 , u3. -/
-#eval NeuralNetwork.State.workPhase wθ test.extu test.onlyUi [2,0,1,2,0,1,2]
-
-/-The workphase for the asynchronous update of the sequence of neurons u3 , u2 , u1 , u3 , u2 , u1 , u3. -/
-#eval NeuralNetwork.State.workPhase wθ test.extu test.onlyUi [2,1,0,2,1,0,2]
+/- The work phases for the asynchronous update sequences
+`u3, u1, u2, u3, u1, u2, u3` and `u3, u2, u1, u3, u2, u1, u3` cannot be
+`#eval`ed here: `test` is the noncomputable specification model. The
+executable computations (same weights, same sequences, with decidedness
+certificates) are in `HopfieldNet/CReals/API/NNtest.lean`. -/
 
 /-Hopfield Networks-/
 
