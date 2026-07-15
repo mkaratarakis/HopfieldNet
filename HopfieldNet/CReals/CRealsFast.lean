@@ -256,8 +256,9 @@ We round the result to this precision to stop expression swell.
 def add (x y : Ball) (prec : Int) : Ball :=
   let raw_mid := x.mid + y.mid
   let new_mid := raw_mid.round prec
-  -- Rounding error bound: 2^(prec-1)
-  let err : Dyadic := ⟨1, prec - 1⟩
+  -- Rounding error bound: 2^(prec-1), incurred only if rounding changed the midpoint.
+  -- Keeping exact results exact lets `compare` decide equalities of dyadic values.
+  let err : Dyadic := if new_mid == raw_mid then ⟨0, 0⟩ else ⟨1, prec - 1⟩
   -- Radius: r1 + r2 + error
   let raw_rad := x.rad + y.rad + err
   { mid := new_mid, rad := raw_rad.abs.roundUp prec }
@@ -268,7 +269,8 @@ def neg (x : Ball) : Ball :=
 def mul (x y : Ball) (prec : Int) : Ball :=
   let raw_mid := x.mid * y.mid
   let new_mid := raw_mid.round prec
-  let err : Dyadic := ⟨1, prec - 1⟩
+  -- Rounding error incurred only if rounding changed the midpoint (see `add`).
+  let err : Dyadic := if new_mid == raw_mid then ⟨0, 0⟩ else ⟨1, prec - 1⟩
   -- Product rule error: |x|ry + |y|rx + rx*ry
   let term1 := x.mid.abs * y.rad
   let term2 := y.mid.abs * x.rad
@@ -835,6 +837,14 @@ def compare (x y : FastReal) (fuel : Nat := 100) : Option Ordering :=
       let y_min := byy.mid - byy.rad
       if x_max < y_min then some Ordering.lt
       else if y_max < x_min then some Ordering.gt
+      else if bx.rad.man == 0 && byy.rad.man == 0 then
+        -- Both balls are exact points: compare the midpoints exactly.
+        -- This decides *equalities* of exact dyadic values (e.g. ties in
+        -- threshold comparisons with integer weights), which interval
+        -- refinement alone could never decide.
+        if bx.mid < byy.mid then some Ordering.lt
+        else if byy.mid < bx.mid then some Ordering.gt
+        else some Ordering.eq
       else loop (i + 1) fuel
   loop 0 (fuel + 1)
 
