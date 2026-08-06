@@ -461,66 +461,6 @@ lemma distribution_converges_to_stationarity [Nonempty n]
       _ = π.val i := by simp [h_one]
   simpa [h_left, h_right] using h_sum
 
-/-! #### (B) Convergence in total variation -/
-
-lemma tvDist_row_converges_to_stationary [Nonempty n]
-    (P : Matrix n n ℝ) (π : stdSimplex ℝ n) (hMCMC : IsMCMC P π) (i : n) :
-    Tendsto (fun k : ℕ => Matrix.tvDist (Matrix.rowDist (P^k) i) π.val) atTop (𝓝 0) := by
-  classical
-  have h_conv : Tendsto (fun k : ℕ => P ^ k) atTop (𝓝 (LimitMatrix π)) :=
-    convergence_to_stationarity P π hMCMC
-  -- pointwise convergence of entries in row `i`
-  have h_abs (j : n) :
-      Tendsto (fun k : ℕ => |(P^k) i j - π.val j|) atTop (𝓝 (0 : ℝ)) := by
-    have h_entry :
-        Tendsto (fun k : ℕ => (P ^ k) i j) atTop (𝓝 (LimitMatrix π i j)) := by
-      have h_eval : Continuous fun M : Matrix n n ℝ => M i j := by
-        simpa using ((continuous_apply j).comp (continuous_apply i))
-      exact (h_eval.tendsto _).comp h_conv
-    have h_diff :
-        Tendsto (fun k : ℕ => (P ^ k) i j - π.val j) atTop (𝓝 (0 : ℝ)) := by
-      -- `LimitMatrix π i j = π.val j`
-      have : Tendsto (fun k : ℕ => (P ^ k) i j - π.val j) atTop
-          (𝓝 (LimitMatrix π i j - π.val j)) := h_entry.sub tendsto_const_nhds
-      simpa [LimitMatrix] using this
-    -- continuity of `abs`
-    simpa using (continuous_abs.tendsto (0 : ℝ)).comp h_diff
-  have h_sum :
-      Tendsto (fun k : ℕ => ∑ j, |(P^k) i j - π.val j|) atTop (𝓝 (0 : ℝ)) := by
-    simpa using
-      (tendsto_finset_sum (s := (Finset.univ : Finset n))
-        (fun j _ => h_abs j))
-  -- divide by 2 to get TV
-  have : Tendsto (fun k : ℕ => (∑ j, |(P^k) i j - π.val j|) / 2) atTop (𝓝 (0 : ℝ)) := by
-    simpa using h_sum.div_const (2 : ℝ)
-  simpa [Matrix.tvDist, Matrix.rowDist] using this
-
-lemma tvDist_distributionAtTime_converges_to_stationary [Nonempty n]
-    (P : Matrix n n ℝ) (π : stdSimplex ℝ n) (hMCMC : IsMCMC P π)
-    (μ₀ : stdSimplex ℝ n) :
-    Tendsto (fun k : ℕ => Matrix.tvDist (distributionAtTime P μ₀ k) π.val) atTop (𝓝 0) := by
-  classical
-  have hμ : Tendsto (distributionAtTime P μ₀) atTop (𝓝 π.val) :=
-    distribution_converges_to_stationarity P π hMCMC μ₀
-  have h_abs (i : n) :
-      Tendsto (fun k : ℕ => |distributionAtTime P μ₀ k i - π.val i|) atTop (𝓝 (0 : ℝ)) := by
-    have h_diff :
-        Tendsto (fun k : ℕ => distributionAtTime P μ₀ k i - π.val i) atTop (𝓝 (0 : ℝ)) := by
-      have : Tendsto (fun k : ℕ => distributionAtTime P μ₀ k i - π.val i) atTop
-          (𝓝 (π.val i - π.val i)) :=
-        (tendsto_pi_nhds.mp hμ i).sub tendsto_const_nhds
-      simpa using this
-    -- continuity of `abs`
-    simpa using (continuous_abs.tendsto (0 : ℝ)).comp h_diff
-  have h_sum :
-      Tendsto (fun k : ℕ => ∑ i, |distributionAtTime P μ₀ k i - π.val i|) atTop (𝓝 (0 : ℝ)) := by
-    simpa using
-      (tendsto_finset_sum (s := (Finset.univ : Finset n))
-        (fun i _ => h_abs i))
-  have : Tendsto (fun k : ℕ => (∑ i, |distributionAtTime P μ₀ k i - π.val i|) / 2) atTop (𝓝 (0 : ℝ)) := by
-    simpa using h_sum.div_const (2 : ℝ)
-  simpa [Matrix.tvDist] using this
-
 /-! #### The Ergodic Theorem (Law of Large Numbers) -/
 
 /-- Expectation of a function f under a distribution π. E_π[f]. -/

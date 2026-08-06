@@ -18,36 +18,46 @@ instance : MeasurableSpace Int := ⊤
 /-- The Sherrington-Kirkpatrick (or Edwards-Anderson) potential.
     Φ_{ij}(σ) = - J_{ij} * σ_i * σ_j.
     (Using -J for ferromagnetic convention, or just J). -/
-noncomputable def skPotential (J : V → V → ℝ) : Potential V Int :=
+def skPotential (J : V → V → ℝ) : Potential V Int :=
   fun Δ σ ↦
     if h : ∃ i j, i ≠ j ∧ Δ = {i, j} then
-      -- Use classical choice to extract witnesses from `∃` (cannot eliminate `Exists` into `ℝ` directly).
-      let i : V := Classical.choose h;
-      let hj : ∃ j : V, i ≠ j ∧ Δ = {i, j} := Classical.choose_spec h;
-      let j : V := Classical.choose hj;
+      let ⟨i, j, _⟩ := h
+      -- We need to be careful with double counting if {i,j} = {j,i}.
+      -- The potential is defined on the set Δ.
+      -- J should be symmetric.
       - J i j * (σ i : ℝ) * (σ j : ℝ)
-    else 0
+    else
+      0
 
 instance (J : V → V → ℝ) : Potential.IsFinitary (skPotential J) where
   finite_support := by
-    classical
-    -- Since `V` is finite, the type `Finset V` is finite, hence any subset is finite.
-    exact (Set.finite_univ.subset (by intro Δ hΔ; trivial))
+    let s : Finset (Finset V) := Finset.univ.biUnion fun i ↦ Finset.univ.map ⟨fun j ↦ {i, j}, by simp⟩
+    apply Set.Finite.subset (s := (s : Set (Finset V)))
+    · exact Finset.finite_toSet s
+    · intro Δ hΔ
+      simp only [skPotential, ne_eq, Set.mem_setOf_eq] at hΔ
+      split at hΔ
+      · obtain ⟨i, j, _, rfl⟩ := ‹∃ i j, i ≠ j ∧ Δ = {i, j}›
+        simp [s]
+      · contradiction
 
 instance (J : V → V → ℝ) : Potential.IsPotential (skPotential J) where
   measurable Δ := by
-    classical
-    -- With `MeasurableSpace Int := ⊤`, the induced measurable space on configurations is `⊤`,
-    -- so every function is measurable.
-    intro s hs
-    -- `cylinderEvents` is a comap of a restriction map; comap of `⊤` is `⊤`, hence all sets are measurable.
-    simp [cylinderEvents_eq_comap_restrict]
+    simp only [skPotential]
+    split_ifs with h
+    · obtain ⟨i, j, _, rfl⟩ := h
+      apply Measurable.mul
+      · apply Measurable.mul
+        · exact measurable_const
+        · exact (measurable_from_top.comp (measurable_cylinderEvent_apply (i := i) (X := fun _ : V ↦ Int) (by simp)))
+      · exact (measurable_from_top.comp (measurable_cylinderEvent_apply (i := j) (X := fun _ : V ↦ Int) (by simp)))
+    · exact measurable_const
 
 /-- The Gibbs specification for the SK model. -/
 noncomputable def skSpecification (J : V → V → ℝ) (β : ℝ) (ν : Measure Int)
     [IsProbabilityMeasure ν]
     (hZ : ∀ (Λ : Finset V) (η : V → Int),
-      Specification.premodifierZ ν (Potential.boltzmannWeight (Φ := skPotential J) β) Λ η ≠ ⊤) :
+      Specification.premodifierZ ν (Potential.boltzmannWeight (skPotential J) β) Λ η ≠ ⊤) :
     Specification V Int :=
   Potential.gibbsSpecification (skPotential J) β ν hZ
 

@@ -1,7 +1,6 @@
-import NeuralNetwork.MCNN.NNQuiver
-import NeuralNetwork.MCNN.HopfieldBridge
-import NeuralNetwork.MCNN.ContinuousDynamics
-import NeuralNetwork.MCNN.NN
+import NeuralNetwork.NNQuiver
+import NeuralNetwork.ContinuousDynamics
+import NeuralNetwork.NN
 import Mathlib
 
 /-- Neural Framework: Category of neural architectures with morphisms -/
@@ -109,3 +108,52 @@ by
     , h_pullback := by
         intro x
         rfl }
+
+section architectures
+
+/-- Components of a Transformer block (placeholder index set for the quiver). -/
+inductive TransformerComponent
+  | embedding
+  | attention
+  | feedForward
+  | addNorm
+deriving DecidableEq, Inhabited
+
+/-- Provide a trivial quiver on the index set (no edges).
+This satisfies the typeclass requirement for `NeuralNetwork` over
+`(Fin n_layers × TransformerComponent)`. -/
+instance instQuiver_TransformerIndex (n_layers : ℕ) :
+    Quiver (Fin n_layers × TransformerComponent) :=
+  ⟨fun _ _ => Empty⟩
+
+/-- ResNet layer index set (placeholder). -/
+inductive ResNetLayer (depth : ℕ)
+  | block (i : Fin depth)
+  | skip
+deriving DecidableEq, Inhabited
+
+/-- Transformer architecture as a layered quiver -/
+def TransformerQuiver (d_model n_heads n_layers : ℕ) :
+    NeuralNetwork ℝ (Fin n_layers × TransformerComponent) ℝ :=
+  -- Multi-head attention + feed-forward layers
+  sorry
+
+/-- Provide a trivial quiver on the ResNet layer index set (no edges). -/
+instance instQuiver_ResNetLayer (depth : ℕ) : Quiver (ResNetLayer depth) :=
+  ⟨fun _ _ => Empty⟩
+
+/-- ResNet with skip connections -/
+def ResNetQuiver (depth : ℕ) : NeuralNetwork ℝ (ResNetLayer depth) ℝ :=
+  -- Residual connections via your HasResidual class
+  sorry
+
+/-- Neural ODE integration -/
+def NeuralODEBlock (dim : ℕ) :
+    UnifiedDynamics (.Continuous (by infer_instance)) :=
+  -- Continuous-time neural networks
+  sorry
+
+/-- Graph Neural Network on arbitrary quivers -/
+def GraphNN (V : Type*) [Quiver V] [Fintype V] : NeuralNetwork ℝ V ℝ :=
+  -- Message passing using your quiver operations
+  sorry
