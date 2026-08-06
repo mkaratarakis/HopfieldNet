@@ -652,7 +652,6 @@ private lemma gibbsUpdate_apply_updPos [DecidableEq U] [Fintype U] [Nonempty U]
     simp [pPosNN]; exact ENNReal.ofReal_eq_coe_nnreal h_nonneg
   simp [pPos, pPosNN, hcoe,
         PMF.bernoulli_bind_pure_apply_left_of_ne (α:=NN.State) (p:=pPosNN) h_leNN hne]
-  aesop
 
 /-- Pointwise evaluation at `updNeg` (ENNReal helper). -/
 lemma gibbsUpdate_apply_updNeg
@@ -681,7 +680,6 @@ lemma gibbsUpdate_apply_updNeg
       exact Eq.symm (ENNReal.ofReal_eq_coe_nnreal h_nonneg)
     simpa [this] using (ENNReal.ofReal_sub 1 h_nonneg)
   simp [pPos, pPosNN, h_eval, hsub]
-  aesop
 
 lemma Kbm_apply_updPos (u : U) (s : NN.State) :
     Kbm NN p T u s (updPos (NN := NN) s u) = TwoState.probPos (NN := NN) (RingHom.id ℝ) p T s u := by
@@ -711,7 +709,11 @@ lemma Kbm_apply_other (u : U) (s s' : NN.State)
   simp [h_K]
   simp_all only [ne_eq, Function.const_apply, not_false_eq_true,
     ENNReal.toReal_zero, f]
-  aesop
+  exact
+    (AddSemiconjBy.eq_zero_iff (ENNReal.toReal 0)
+          (congrFun (congrArg HAdd.hAdd (congrArg ENNReal.toReal (id (Eq.symm h_K))))
+            (ENNReal.toReal 0))).mp
+      rfl
 
 /-- (1 - logistic(x)) / logistic(x) = exp(-x). -/
 lemma one_sub_logistic_div_logistic (x : ℝ) :

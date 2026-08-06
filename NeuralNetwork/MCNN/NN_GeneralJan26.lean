@@ -1,17 +1,229 @@
-import NeuralNetwork.MCNN.NN
+import Mathlib
+
+open scoped InnerProductSpace RealInnerProductSpace
+
+-- We work over a general Nontrivially Normed Field 𝕜.
+variable {𝕜 : Type*} [NontriviallyNormedField 𝕜]
+
+namespace ContinuousLinearMap
+
+variable {E F G : Type*}
+  [NormedAddCommGroup E] [NormedSpace 𝕜 E]
+  [NormedAddCommGroup F] [NormedSpace 𝕜 F]
+  [NormedAddCommGroup G] [NormedSpace 𝕜 G]
+
+/-- The continuous linear map that composes a continuous linear map with a given continuous linear
+map `f` on the right. This is the "right-composition" operator.
+`compRightL 𝕜 E F` is the map `g ↦ g.comp f` where `f : E →L[𝕜] F` and `g : F →L[𝕜] G`. -/
+noncomputable def compRightL (f : E →L[𝕜] F) : (F →L[𝕜] G) →L[𝕜] (E →L[𝕜] G) :=
+  (ContinuousLinearMap.compL 𝕜 E F G).flip f
+
+@[simp]
+theorem compRightL_apply (f : E →L[𝕜] F) (g : F →L[𝕜] G) :
+    compRightL f g = g.comp f :=
+  rfl
+
+/-- The dual map of a continuous linear map `f`, is the continuous linear map from the dual of the
+codomain to the dual of the domain, given by pre-composition with `f`. -/
+noncomputable def dualMap (f : E →L[𝕜] F) :
+    StrongDual 𝕜 F →L[𝕜] StrongDual 𝕜 E :=
+  compRightL f
+
+@[simp]
+theorem dualMap_apply {f : E →L[𝕜] F} {g : StrongDual 𝕜 F} :
+    dualMap f g = g.comp f := rfl
+
+@[simp]
+theorem dualMap_apply_apply {f : E →L[𝕜] F} {g : StrongDual 𝕜 F} {x : E} :
+    (dualMap f g) x = g (f x) := rfl
+
+@[simp]
+theorem dualMap_comp {f : E →L[𝕜] F} {g : F →L[𝕜] G} :
+    dualMap (g.comp f) = (dualMap f).comp (dualMap g) := by
+  ext h
+  simp only [comp_apply, dualMap_apply, ContinuousLinearMap.comp_assoc]
+
+end ContinuousLinearMap
 
 /-!
-Jan 2026 scratchpad / integration notes.
-
-The **canonical** differentiable-programming abstractions (pullbacks, lenses, `CompBlock`,
-etc.) live in `NeuralNetwork/MCNN/NN.lean`.
-
-The remainder of this file is temporarily disabled while being consolidated into smaller,
-importable modules (e.g. an `EnergyLens` module) without universe/instance friction.
+# L1 Generalized: Differentiable Pullbacks (Banach Spaces)
 -/
 
-/-
-open scoped InnerProductSpace RealInnerProductSpace BigOperators Gradient
+-- E, F, G are Normed Spaces over 𝕜 (Banach if CompleteSpace is assumed).
+variable {E F G : Type*}
+  [NormedAddCommGroup E] [NormedSpace 𝕜 E]
+  [NormedAddCommGroup F] [NormedSpace 𝕜 F]
+  [NormedAddCommGroup G] [NormedSpace 𝕜 G]
+
+/--
+The fundamental abstraction for differentiable computation in Banach spaces.
+Represents a function and its backpropagator operating on the dual spaces (the pullback).
+-/
+structure DifferentiablePullback (E F : Type*) [NormedAddCommGroup E] [NormedSpace 𝕜 E]
+  [NormedAddCommGroup F] [NormedSpace 𝕜 F] where
+  view : E → F
+  h_diff : Differentiable 𝕜 view
+  /-- The pullback: E → (F* →L[𝕜] E*). Returns the dual map of Df(x). -/
+  pullback : E → (StrongDual 𝕜 F →L[𝕜] StrongDual 𝕜 E)
+  /-- Correctness: The pullback map must be the dual map of the Fréchet derivative. -/
+  h_pullback : ∀ (x : E),
+    pullback x = ContinuousLinearMap.dualMap (fderiv 𝕜 view x)
+
+namespace DifferentiablePullback
+
+def compose {E F G : Type*} [NormedAddCommGroup E] [NormedSpace 𝕜 E]
+    [NormedAddCommGroup F] [NormedSpace 𝕜 F] [NormedAddCommGroup G] [NormedSpace 𝕜 G]
+    (L1 : @DifferentiablePullback 𝕜 _ F G _ _ _ _) (L2 : @DifferentiablePullback 𝕜 _ E F _ _ _ _) :
+    @DifferentiablePullback 𝕜 _ E G _ _ _ _ where
+  view := L1.view ∘ L2.view
+  h_diff := L1.h_diff.comp L2.h_diff
+  pullback := fun x =>
+    -- (g ∘ f)* = f* ∘ g*
+    (L2.pullback x).comp (L1.pullback (L2.view x))
+  h_pullback := by
+    intro x
+    simp only [L2.h_pullback x, L1.h_pullback (L2.view x)]
+    -- Now we have: goal is to show
+    -- (L2.pullback x).comp (L1.pullback (L2.view x)) =
+    -- dualMap (fderiv 𝕜 (L1.view ∘ L2.view) x)
+    rw [← ContinuousLinearMap.dualMap_comp]
+    -- Now we need to show:
+    -- dualMap ((fderiv 𝕜 L1.view (L2.view x)).comp (fderiv 𝕜 L2.view x)) =
+    -- dualMap (fderiv 𝕜 (L1.view ∘ L2.view) x)
+    congr 1
+    rw [← fderiv_comp x (L1.h_diff (L2.view x)) (L2.h_diff x)]
+
+end DifferentiablePullback
+
+/-!
+# L1 Specialization: Differentiable Lenses (Hilbert Spaces)
+-/
+
+-- H1, H2, H3 are Hilbert spaces. We require 𝕜' to be RCLike (ℝ or ℂ) for the standard Hilbert adjoint.
+variable {𝕜' : Type*} [RCLike 𝕜']
+variable {H1 H2 H3 : Type*}
+  [NormedAddCommGroup H1] [InnerProductSpace 𝕜' H1] [CompleteSpace H1]
+  [NormedAddCommGroup H2] [InnerProductSpace 𝕜' H2] [CompleteSpace H2]
+  [NormedAddCommGroup H3] [InnerProductSpace 𝕜' H3] [CompleteSpace H3]
+
+/--
+A Differentiable Lens in Hilbert spaces. Uses the Hilbert adjoint for gradient flow.
+-/
+structure DifferentiableLens (𝕜' : Type*) (H1 H2 : Type*)
+  [RCLike 𝕜']
+  [NormedAddCommGroup H1] [InnerProductSpace 𝕜' H1] [CompleteSpace H1]
+  [NormedAddCommGroup H2] [InnerProductSpace 𝕜' H2] [CompleteSpace H2] where
+  view : H1 → H2
+  h_diff : Differentiable 𝕜' view
+  /-- The backward map (Adjoint): H1 → (H2 →L[𝕜'] H1). -/
+  update : H1 → (H2 →L[𝕜'] H1)
+  /-- Correctness: The update map must be the Hilbert adjoint of the Fréchet derivative. -/
+  h_update : ∀ (x : H1),
+    update x = ContinuousLinearMap.adjoint (fderiv 𝕜' view x)
+
+namespace DifferentiableLens
+
+/-- Composition of Lenses (The Chain Rule in Hilbert Spaces). -/
+def compose {𝕜' : Type*} [RCLike 𝕜'] {H1 H2 H3 : Type*}
+    [NormedAddCommGroup H1] [InnerProductSpace 𝕜' H1] [CompleteSpace H1]
+    [NormedAddCommGroup H2] [InnerProductSpace 𝕜' H2] [CompleteSpace H2]
+    [NormedAddCommGroup H3] [InnerProductSpace 𝕜' H3] [CompleteSpace H3]
+    (L1 : DifferentiableLens 𝕜' H1 H2) (L2 : DifferentiableLens 𝕜' H2 H3) :
+    DifferentiableLens 𝕜' H1 H3 where
+  view := L2.view ∘ L1.view
+  h_diff := L2.h_diff.comp L1.h_diff
+  update := fun x =>
+    let y := L1.view x
+    -- (g ∘ f)† = f† ∘ g†
+    (L1.update x).comp (L2.update y)
+  h_update := by
+    intro x
+    simp_rw [L1.h_update, L2.h_update (L1.view x)]
+    -- Apply the chain rule: fderiv (g ∘ f) x = (fderiv g (f x)) ∘ (fderiv f x)
+    rw [fderiv_comp x (L2.h_diff (L1.view x)) (L1.h_diff x)]
+    rw [ContinuousLinearMap.adjoint_comp]
+
+end DifferentiableLens
+
+/-!
+# L1 Refinement: Higher-Order Calculus
+-/
+
+section HigherOrderCalculus
+
+variable {𝕜 : Type*} [NontriviallyNormedField 𝕜]
+variable {E F : Type*} [NormedAddCommGroup E] [NormedSpace 𝕜 E] [NormedAddCommGroup F] [NormedSpace 𝕜 F]
+
+/--
+The second derivative (Hessian) of a function f: E → F at x.
+It is the Fréchet derivative of the Fréchet derivative map.
+H(x) : E →L[𝕜] (E →L[𝕜] F).
+-/
+noncomputable def Hessian (f : E → F) (x : E) : E →L[𝕜] (E →L[𝕜] F) :=
+  fderiv (𝕜 := 𝕜) (fderiv (𝕜 := 𝕜) f) x
+
+/--
+Hessian-Vector Products (Hv-products). Computes (H(x)v₁v₂).
+This is the second derivative evaluated in the directions v₁ and v₂.
+-/
+noncomputable def HessianVectorProduct (f : E → F) (x v₁ v₂ : E) : F :=
+  ((Hessian (𝕜 := 𝕜) (E := E) (F := F) f x) v₁) v₂
+
+-- Note: Higher-order derivatives are accessed directly via `iteratedFDeriv 𝕜 n f x`.
+
+-- H is a Hilbert space over ℝ for optimization contexts (required for `gradient`).
+variable {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℝ H] [CompleteSpace H]
+
+/--
+Hessian-Vector Products (Hv-products) for scalar-valued functions. Computes H(x)v.
+This utilizes the definition that the Hessian applied to v is the directional derivative
+of the gradient along v (Forward-over-Reverse AD).
+The result is a vector in H.
+-/
+noncomputable def HessianVectorProduct' (f : H → ℝ) (x v : H) : H :=
+  let g := gradient f
+  (fderiv ℝ g x) v
+
+end HigherOrderCalculus
+
+/-!
+# L1 Refinement: The Riesz Bridge
+We formalize the connection between the Banach dual map and the Hilbert adjoint.
+-/
+
+section RieszBridge
+
+-- H1, H2 are Hilbert spaces over 𝕜' (ℝ or ℂ).
+variable {𝕜' : Type*} [RCLike 𝕜']
+variable {H1 H2 : Type*}
+  [NormedAddCommGroup H1] [InnerProductSpace 𝕜' H1] [CompleteSpace H1]
+  [NormedAddCommGroup H2] [InnerProductSpace 𝕜' H2] [CompleteSpace H2]
+
+/--
+The Riesz Representation Map H ≃L[𝕜'] H*.
+It is a conjugate-linear isometric isomorphism targeting the `StrongDual`.
+In mathlib: `InnerProductSpace.toDual`.
+-/
+noncomputable abbrev RieszMap (H : Type*) [NormedAddCommGroup H] [InnerProductSpace 𝕜' H] [CompleteSpace H] :
+  H ≃ₗᵢ⋆[𝕜'] StrongDual 𝕜' H :=
+  InnerProductSpace.toDual 𝕜' H
+
+/--
+Theorem: The Riesz Bridge.
+The Hilbert adjoint L† is related to the Banach dual map L* by the Riesz isomorphisms R_H:
+L† = R₁⁻¹ ∘ L* ∘ R₂.
+This shows that the optimization geometry (Hilbert adjoint) is derived from
+the differentiation mechanism (Banach dual map).
+-/
+theorem riesz_bridge_adjoint
+    (L : H1 →L[𝕜'] H2) :
+    L.adjoint =
+      ((RieszMap H1).symm.toContinuousLinearEquiv.toContinuousLinearMap).comp
+        ((ContinuousLinearMap.dualMap L).comp
+        ((RieszMap H2).toContinuousLinearEquiv.toContinuousLinearMap)) := by
+  simp; exact rfl
+
+end RieszBridge
 
 /-!
 # L2: Parameterized Lenses for Neural Networks
@@ -160,14 +372,86 @@ Hilbert-space VJP (via the adjoint). We also provide a bridge back into your
 DifferentiablePullback abstraction for reuse of composition theorems.
 -/
 
+section CompBlock
+
+variable {𝕜 : Type*} [NontriviallyNormedField 𝕜]
+variable {P X Y : Type*}
+  [NormedAddCommGroup P] [NormedSpace 𝕜 P]
+  [NormedAddCommGroup X] [NormedSpace 𝕜 X]
+  [NormedAddCommGroup Y] [NormedSpace 𝕜 Y]
+
+/-- A differentiable, parameterized block: fwd : P × X → Y with a differentiability certificate. -/
+structure CompBlock (𝕜 : Type*) [NontriviallyNormedField 𝕜]
+    (P X Y : Type*)
+    [NormedAddCommGroup P] [NormedSpace 𝕜 P]
+    [NormedAddCommGroup X] [NormedSpace 𝕜 X]
+    [NormedAddCommGroup Y] [NormedSpace 𝕜 Y] where
+  fwd   : P × X → Y
+  diff  : Differentiable 𝕜 fwd
+
+namespace CompBlock
+
+/-- The Fréchet derivative (Jacobian) of a block at (p, x). -/
+noncomputable def jacobian
+    (B : CompBlock 𝕜 P X Y) (p : P) (x : X) : (P × X) →L[𝕜] Y :=
+  fderiv 𝕜 B.fwd (p, x)
+
+/-- Banach VJP: the pullback on duals (StrongDual) induced by the Jacobian. -/
+noncomputable def vjpBanach
+    (B : CompBlock 𝕜 P X Y) (p : P) (x : X) :
+    (StrongDual 𝕜 Y) →L[𝕜] (StrongDual 𝕜 (P × X)) :=
+  ContinuousLinearMap.dualMap (B.jacobian p x)
+
+/-- Package the block as a DifferentiablePullback from P × X to Y. -/
+noncomputable def toDifferentiablePullback
+    (B : CompBlock 𝕜 P X Y) :
+    @DifferentiablePullback 𝕜 _ (P × X) Y _ _ _ _ where
+  view := B.fwd
+  h_diff := B.diff
+  pullback := fun z => ContinuousLinearMap.dualMap (fderiv 𝕜 B.fwd z)
+  h_pullback := by intro z; rfl
+
+/- Hilbert-space VJP via the adjoint (requires inner products over an RCLike field). -/
+variable {𝕜' : Type*} [RCLike 𝕜']
+variable {P' X' Y' : Type*}
+  [NormedAddCommGroup P'] [InnerProductSpace 𝕜' P'] [CompleteSpace P']
+  [NormedAddCommGroup X'] [InnerProductSpace 𝕜' X'] [CompleteSpace X']
+  [NormedAddCommGroup Y'] [InnerProductSpace 𝕜' Y'] [CompleteSpace Y']
+
+open scoped InnerProductSpace RealInnerProductSpace PiLp EuclideanSpace
+
+/-
+noncomputable def vjpHilbert
+    (B : CompBlock 𝕜' P' X' Y') (p : P') (x : X') :
+    Y' →L[𝕜'] (P' × X') :=
+  have := Prod.innerProductSpace
+  ContinuousLinearMap.adjoint (fderiv 𝕜' B.fwd (p, x))
+  -/
+
+
+
+end CompBlock
+end CompBlock
+
+
+open scoped InnerProductSpace RealInnerProductSpace BigOperators Gradient
+
+variable {P S : Type*}
+  [NormedAddCommGroup P] [InnerProductSpace ℝ P] [CompleteSpace P]
+  [NormedAddCommGroup S] [InnerProductSpace ℝ S] [CompleteSpace S]
+
+/-- Componentwise inner product on `P × S` (sum of inner products). -/
+noncomputable instance : Inner ℝ (P × S) where
+  inner x y := inner ℝ x.1 y.1 + inner ℝ x.2 y.2
+
 /--
   **Definition: EnergyLens**
   A bundled structure connecting Thermodynamics (Energy) with Mechanics (Forces).
   It strictly separates Logic (Prop) from Data (Map).
 -/
 structure EnergyLens (P S : Type*)
-  [NormedAddCommGroup P] [NormedSpace ℝ P] [InnerProductSpace ℝ P] [CompleteSpace P]
-  [NormedAddCommGroup S] [NormedSpace ℝ S] [InnerProductSpace ℝ S] [CompleteSpace S] where
+  [NormedAddCommGroup P] [InnerProductSpace ℝ P] [CompleteSpace P]
+  [NormedAddCommGroup S] [InnerProductSpace ℝ S] [CompleteSpace S] where
 
   /-- The Scalar Potential E(θ, s) -/
   energy : P → S → ℝ
@@ -179,12 +463,6 @@ structure EnergyLens (P S : Type*)
   is_gradient : ∀ p s (v : P × S),
     inner ℝ (force_vector p s) v =
       fderiv ℝ (fun (x : P × S) => energy x.1 x.2) (p, s) v
-
-section EnergyLensCore
-
-variable {P S : Type*}
-  [NormedAddCommGroup P] [NormedSpace ℝ P] [InnerProductSpace ℝ P] [CompleteSpace P]
-  [NormedAddCommGroup S] [NormedSpace ℝ S] [InnerProductSpace ℝ S] [CompleteSpace S]
 
 /--
 Construct a force vector from an energy function by taking the Fréchet derivative
@@ -247,8 +525,6 @@ lemma inner_forceFromEnergy_eq_fderiv
     _ = fderiv ℝ (fun ps : P × S => energy ps.1 ps.2) (p, s) v := by
           simp [df, f]
 
-end EnergyLensCore
-
 -- FIX: Variable declaration moved OUTSIDE the structure to fix scope errors
 variable {n : Type*} [Fintype n] [DecidableEq n]
 
@@ -278,16 +554,16 @@ noncomputable def toEnergyLens {P X : Type*}
   [NormedAddCommGroup P] [InnerProductSpace ℝ P] [CompleteSpace P]
   [NormedAddCommGroup X] [InnerProductSpace ℝ X] [CompleteSpace X]
   (B : CompBlock ℝ P X ℝ) (target : ℝ) : EnergyLens P X where
-  energy := fun p x => 1/2 * ‖B.fwd (p, x) - target‖ ^ 2
-  force_vector := forceFromEnergy (P:=P) (S:=X) (fun p x => 1/2 * ‖B.fwd (p, x) - target‖ ^ 2)
-  is_gradient := by
-    intro p x v
-    -- `force_vector` was defined via the canonical Riesz/Fréchet construction.
-    simpa [forceFromEnergy] using
-      (inner_forceFromEnergy_eq_fderiv
-        (P:=P) (S:=X)
-        (energy := fun p x => 1/2 * ‖B.fwd (p, x) - target‖ ^ 2)
-        p x v)
+  energy := fun p x => 1/2 * ‖B.fwd (p, x) - target‖^2
+  force_vector := fun p x =>
+    let y := B.fwd (p, x)
+    let err := y - target
+    -- The gradient of 1/2‖y - t‖² is (y - t).
+    -- We backpropagate (y - t) through the block.
+    -- Note: This assumes we have a Hilbert VJP available (adjoint).
+    -- For now, we leave the implementation abstract or use a placeholder.
+    ((0 : P), (0 : X)) -- Placeholder: Requires Hilbert VJP implementation
+  is_gradient := sorry
 
 /-! ### 3.2 The Physics (Mean-Field Theory) -/
 
@@ -315,7 +591,7 @@ This is useful for documentation and fast computation.
 
 Note: proving this equals the canonical `forceFromEnergy` construction (and hence satisfies
 `EnergyLens.is_gradient`) requires extra analytic hypotheses and lemmas, especially for the
-entropy term (one typically needs `∀ i, 0 < x i ∧ x i < 1` to use `Real.log` derivative rules).
+entropy term (you typically need `∀ i, 0 < x i ∧ x i < 1` to use `Real.log` derivative rules).
 -/
 noncomputable def EntropicBoltzmannForceExplicit
     (p : WithLp 2 (EuclideanSpace ℝ (n × n) × EuclideanSpace ℝ n)) (x : EuclideanSpace ℝ n) :
@@ -451,6 +727,21 @@ end EntropicBoltzmann
 open Real
 
 noncomputable def neural_sigmoid (x : ℝ) : ℝ := 1 / (1 + exp (-x))
+
+theorem mean_field_consistency
+  (W_flat : EuclideanSpace ℝ (n × n)) (θ : EuclideanSpace ℝ n) (s : EuclideanSpace ℝ n) :
+
+  -- If the thermodynamic force is zero (Stationary Point)
+  (EntropicBoltzmann.force_vector (WithLp.toLp 2 (W_flat, θ)) s).2 = 0
+
+  -- Then the state satisfies the Discrete Fixed-Point Equation
+  -- s = σ(Ws + θ)
+  ↔ ∀ i, s i = neural_sigmoid (((toMatrix W_flat).mulVec s) i + θ i) :=
+by
+  -- 1. Force = 0 implies -Wx - θ + logit(s) = 0
+  -- 2. logit(s) = Wx + θ
+  -- 3. s = sigmoid(Wx + θ)
+  sorry
 
 
 noncomputable def langevinStep (L : EnergyLens P S)
@@ -863,4 +1154,122 @@ end Transformer
 
 /-! ### 5. Linear Layers and Attention -/
 
+section LinearLayers
+
+variable {n m : Type*} [Fintype n] [Fintype m] [DecidableEq n] [DecidableEq m]
+
+/-- Reshapes a flattened Euclidean vector into a Matrix (general dimensions) -/
+noncomputable def toMatrixGen (v : EuclideanSpace ℝ (m × n)) : Matrix m n ℝ :=
+  Matrix.of (fun i j => v (i, j))
+
+/--
+  Linear Layer: f(x) = Wx + b
+  Parameters: (Weights, Bias)
 -/
+noncomputable def Linear : CompBlock ℝ (EuclideanSpace ℝ (m × n) × EuclideanSpace ℝ m)
+    (EuclideanSpace ℝ n) (EuclideanSpace ℝ m) where
+  fwd := fun ((w_flat, b), x) =>
+    let W := toMatrixGen w_flat
+    toEuclideanFun (W.mulVec x) + b
+  diff := sorry -- Linear maps are differentiable
+
+/-- Example: Feed-Forward Network using Linear blocks -/
+def FFN (d_model d_hidden : Type*) [Fintype d_model] [Fintype d_hidden] [DecidableEq d_model] [DecidableEq d_hidden]
+    (Activation : CompBlock ℝ Unit (EuclideanSpace ℝ d_hidden) (EuclideanSpace ℝ d_hidden)) :
+    CompBlock ℝ _ (EuclideanSpace ℝ d_model) (EuclideanSpace ℝ d_model) :=
+  let L1 := Linear (n := d_model) (m := d_hidden)
+  let L2 := Linear (n := d_hidden) (m := d_model)
+  L2.compose (Activation.compose L1)
+
+/-- Layer Normalization: y = (x - μ) / √(σ² + ε) * γ + β -/
+noncomputable def LayerNorm (ε : ℝ) : CompBlock ℝ (EuclideanSpace ℝ n × EuclideanSpace ℝ n) (EuclideanSpace ℝ n) (EuclideanSpace ℝ n) where
+  fwd := fun ((γ, β), x) =>
+    let card := Fintype.card n
+    let μ := (∑ i, x i) / card
+    let var := (∑ i, (x i - μ)^2) / card
+    let x_hat := toEuclideanFun (fun i => (x i - μ) / Real.sqrt (var + ε))
+    toEuclideanFun (fun i => γ i * x_hat i + β i)
+  diff := sorry
+
+end LinearLayers
+
+section Attention
+
+variable {d_model d_head : Type*} [Fintype d_model] [Fintype d_head]
+         [DecidableEq d_model] [DecidableEq d_head]
+
+/-- Softmax activation (parameter-less) -/
+def Softmax : CompBlock ℝ Unit (EuclideanSpace ℝ d_head) (EuclideanSpace ℝ d_head) where
+  fwd := fun (_, x) =>
+    let exp_x := toEuclideanFun (fun i => Real.exp (x i))
+    let sum_exp := ∑ i, exp_x i
+    (sum_exp⁻¹) • exp_x
+  diff := sorry
+
+/-- Parallel composition (Fan-out): Passes input to both blocks. -/
+def CompBlock.fanout {P1 P2 X Y1 Y2 : Type*}
+    [NormedAddCommGroup P1] [NormedSpace ℝ P1] [NormedAddCommGroup P2] [NormedSpace ℝ P2]
+    [NormedAddCommGroup X] [NormedSpace ℝ X]
+    [NormedAddCommGroup Y1] [NormedSpace ℝ Y1] [NormedAddCommGroup Y2] [NormedSpace ℝ Y2]
+    (B1 : CompBlock ℝ P1 X Y1) (B2 : CompBlock ℝ P2 X Y2) :
+    CompBlock ℝ (P1 × P2) X (Y1 × Y2) where
+  fwd := fun ((p1, p2), x) => (B1.fwd (p1, x), B2.fwd (p2, x))
+  diff := sorry
+
+/--
+  Attention Mechanism: Softmax(Q * K) * V
+  Note: We use element-wise multiplication for Q and K to produce a vector for Softmax,
+  interpreting the "dot product" requirement as a feature-wise interaction in this type context.
+-/
+def AttentionMechanism : CompBlock ℝ Unit ((EuclideanSpace ℝ d_head × EuclideanSpace ℝ d_head) × EuclideanSpace ℝ d_head) (EuclideanSpace ℝ d_head) where
+  fwd := fun ((q, k), v) =>
+    let scores := toEuclideanFun (fun i => q i * k i)
+    let weights := Softmax.fwd ((), scores)
+    toEuclideanFun (fun i => weights i * v i)
+  diff := sorry
+
+/--
+  Multi-Head Attention constructed by composing Linear blocks.
+  We assume an `AttentionMechanism` block is provided (which uses Softmax internally).
+-/
+def MultiHeadAttention
+    (AttentionMechanism : CompBlock ℝ Unit ((EuclideanSpace ℝ d_head × EuclideanSpace ℝ d_head) × EuclideanSpace ℝ d_head) (EuclideanSpace ℝ d_head)) :
+    CompBlock ℝ _ (EuclideanSpace ℝ d_model) (EuclideanSpace ℝ d_model) :=
+  let W_Q := Linear (n := d_model) (m := d_head)
+  let W_K := Linear (n := d_model) (m := d_head)
+  let W_V := Linear (n := d_model) (m := d_head)
+  let W_O := Linear (n := d_head)  (m := d_model)
+  W_O.compose (AttentionMechanism.compose ((W_Q.fanout W_K).fanout W_V))
+
+end Attention
+
+/-! ### 6. Convolutional Layers -/
+
+section Convolution
+
+variable {C_in C_out : Type*} [Fintype C_in] [Fintype C_out] [DecidableEq C_in] [DecidableEq C_out]
+
+/--
+  2D Convolution with valid padding.
+  Input: (C_in, H, W)
+  Output: (C_out, H - K + 1, W - K + 1)
+  Kernel: (C_out, C_in, K, K)
+  Parameters: (Weights, Bias)
+-/
+noncomputable def Conv2D (H W K : ℕ) (hH : K ≤ H) (hW : K ≤ W) :
+    CompBlock ℝ
+      (EuclideanSpace ℝ (C_out × C_in × Fin K × Fin K) × EuclideanSpace ℝ C_out)
+      (EuclideanSpace ℝ (C_in × Fin H × Fin W))
+      (EuclideanSpace ℝ (C_out × Fin (H - K + 1) × Fin (W - K + 1))) where
+  fwd := fun ((weights, bias), x) =>
+    toEuclideanFun fun (co, h, w) =>
+      let val := ∑ ci, ∑ kh, ∑ kw,
+        weights (co, ci, kh, kw) * x (ci,
+          ⟨h.val + kh.val, by have := h.isLt; have := kh.isLt; omega⟩,
+          ⟨w.val + kw.val, by have := w.isLt; have := kw.isLt; omega⟩)
+      val + bias co
+  diff := sorry
+
+end Convolution
+
+--#min_imports

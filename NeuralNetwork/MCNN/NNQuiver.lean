@@ -10,8 +10,6 @@ open Finset
 
 universe uR uU uσ
 
-namespace MCNN
-
 /--
 Quiver–based neural network (refactored from Digraph version).
 
@@ -245,8 +243,7 @@ export HasResidual (isResidual)
 /-- Arrow-level parameter bundle (per-edge + per-vertex). -/
 structure ArrowParams (U : Type u) [Quiver U] (R : Type v) where
   w : ∀ {a b : U}, (a ⟶ b) → R
-  /-- Per-vertex bias term. -/
-  θ : U → R
+  θ : U → R          -- simple scalar bias placeholder
 
 attribute [simp] ArrowParams.w
 
@@ -301,6 +298,20 @@ def combineResidualDec
   match h with
   | isTrue _  => x + weight e
   | isFalse _ => weight e * x
+
+/-- Expand a layer’s output by one synchronous step from an already evaluated prefix of lower layers.
+    Useful for staged constructions without full recursion. -/
+noncomputable
+def extendEval
+    {R : Type v} [Semiring R]
+    [Fintype U] [DecidableEq U] [∀ a b : U, Fintype (a ⟶ b)]
+    (L : NeuralNetwork.Layering U)
+    (P : ArrowParams U R) (φ : R → R)
+    (inputs : U → R)
+    (_partial : {u : U // ∀ p : U, (∃ _ : p ⟶ u, True) → L.ℓ p < L.ℓ u } → R)
+    (a : U) : R :=
+  -- For simplicity here we still recompute via `forwardEval`; in practice one may refine.
+  forwardEval (L := L) P φ inputs a
 
 /-- Sum of weights over all paths of fixed length `n` from `a` to `b`.
     (Illustrative; exponential blowup — suitable only for small finite quivers.) -/
@@ -374,7 +385,7 @@ open NeuralNetwork
 universe u v
 variable {U : Type u} [Quiver U]
 
-/-- Path-product (gradient) for an arborescent quiver:
+/-- Path-product (gradient skeleton) for an arborescent quiver:
     unique path weight from the canonical root to `b`. -/
 noncomputable def rootToWeight
     {R : Type v} [Monoid R] [WeightedQuiver U R] [Quiver.Arborescence U]
@@ -473,6 +484,58 @@ lemma rootSensitivity_const_one (b : U) :
   simp [rootSensitivity, rootToWeight, pathWeight, gradFold_one]
 
 end GradientPathProduct
+
+/-! # Pruning Correctness (Arborescent Case)
+
+In an arborescent quiver each vertex has at most one incoming arrow; removing
+any *non-existent* "extra" edges does nothing. We model pruning by an identity
+re-weighting to show the shape of a future refinement where masking matters.
+-/
+
+section Pruning
+
+variable {R : Type v} [Semiring R]
+variable [Fintype U] [DecidableEq U] [∀ a b : U, Fintype (a ⟶ b)]
+variable [WeightedQuiver U R] [Quiver.Arborescence U]
+
+/-- Identity pruning mask: keeps all existing (unique) incoming edges.
+(Placeholder for a future mask selecting e.g. geodesic edges in a non-tree DAG.)
+Uses classical choice to decide `keep e`. -/
+noncomputable
+def prunedWeights
+    (keep : ∀ {a b : U}, (a ⟶ b) → Prop)
+    (w : ∀ {a b : U}, (a ⟶ b) → R)
+    {a b : U} (e : a ⟶ b) : R :=
+  by
+    classical
+    exact if h : keep e then w e else 0
+
+omit [WeightedQuiver U R] [Arborescence U] in
+/-- Under arborescence (unique parent), any mask that keeps every existing edge
+trivializes the forward evaluation (pruning correctness). -/
+lemma forwardEval_prune_id
+    (L : NeuralNetwork.Layering U)
+    (P : ArrowParams U R)
+    (φ : R → R)
+    (inputs : U → R)
+    (keep : ∀ {a b : U} (_ : a ⟶ b), Prop)
+    (hkeep : ∀ {a b : U} (e : a ⟶ b), keep e) :
+    forwardEval L
+      ({ w := (fun {_ _ : U} e => prunedWeights (keep:=keep) (w:=P.w) e)
+         θ := P.θ } : ArrowParams U R)
+      φ inputs
+    =
+    forwardEval L P φ inputs := by
+  have hw :
+    (fun {a b : U} (e : a ⟶ b) => prunedWeights (keep:=keep) (w:=P.w) e)
+      =
+    (fun {a b : U} (e : a ⟶ b) => P.w e) := by
+      funext a b e; simp [prunedWeights, hkeep]
+  cases P with
+  | mk w θ =>
+      simp [forwardEval, prunedWeights, hkeep]
+
+end Pruning
 
 end NeuralNetwork.QuiverExt
 
@@ -651,10 +714,14 @@ lemma eval_neuronUpdate_correct :
 end Examples
 
 /-!
-## Architecture/dynamics split
+# Refactor TODO
 
-This file includes a small “architecture vs dynamics” factorization (`NeuralArch`, `NeuralDyn`)
-used elsewhere in the file; it is not a stub and is fully defined here.
+Goal: Separate (1) pure architecture (graph + interface sets) from
+(2) dynamics (update rules / parameter typing) and (3) semantic layers
+(e.g. deterministic vs probabilistic vs compiled).
+
+This scaffold is non‑intrusive: current code continues to work.
+Later files can supply concrete instances.
 -/
 
 namespace NeuralArch
@@ -870,7 +937,26 @@ def MDynamics.step
     let net  := D.fnet u (W u) outs (σv u)
     D.fact u (s u) net (θv u)
 
+/-- Placeholder symbolic differentiation signature:
+Given an `Expr` (scalar) produce a derivative AST; correctness theorem will
+relate it to `fderiv` after tensor generalization. -/
+def symbolicGrad
+    {U : Type uU} {R : Type uR}
+    (e : Expr U R) : Expr U R :=
+  -- identity placeholder: future work
+  e
+
 end NeuralNetwork.Future
+
+/-!
+## Roadmap Summary (concise, per reviewer action points)
+
+1. Linear bridge: `weightLinear` + `iterate_matches_matrix_pow` introduced.
+2. Architecture vs monadic dynamics: `MDynamics` skeleton.
+3. Probabilistic / effectful extension point via generic Monad.
+4. Symbolic differentiation placeholder (`symbolicGrad`) to be tied to `fderiv`.
+5. Future work: tensor `Expr` (typed shapes) + correctness lemmas `matMul_eval`.
+-/
 
 namespace NeuralNetwork.QuiverExt
 
@@ -893,7 +979,7 @@ variable {R : Type v}
 variable [Semiring R]
 variable [Fintype U] [DecidableEq U] [∀ a b : U, Fintype (a ⟶ b)]
 
-/-- Fundamental recursive equation (unfold) for `forwardEval`. -/
+/-- Fundamental recursive equation (unfold) for [`forwardEval`](PhysLean/StatisticalMechanics/SpinGlasses/HopfieldNetwork/NeuralNetworkQuiver.lean). -/
 lemma forwardEval_equation
     (L : NeuralNetwork.Layering U)
     (P : ArrowParams U R) (φ : R → R) (inputs : U → R) (a : U) :
@@ -924,7 +1010,7 @@ lemma forwardEval_linear_sol
 
 /-- Uniqueness of the linear solution: any function satisfying the same
 recurrence (with identity activation and zero biases) must coincide with
-`forwardEval`. -/
+[`forwardEval`](PhysLean/StatisticalMechanics/SpinGlasses/HopfieldNetwork/NeuralNetworkQuiver.lean). -/
 lemma forwardEval_linear_unique
     (L : NeuralNetwork.Layering U)
     (P : ArrowParams U R) (inputs : U → R)
@@ -965,6 +1051,8 @@ lemma forwardEval_linear_unique
   funext a; exact h_all a
 
 end ForwardEvalEquations
+
+namespace NeuralNetwork.QuiverExt
 
 open NeuralNetwork
 open Quiver
@@ -1141,15 +1229,24 @@ private lemma pathWeightUpTo_extend_to
     -- From `k ∉ range (M+1)` and naturals, deduce `M < k`.
     have hMk : M < k := by
       -- `k ∉ range (M+1)` ↔ ¬ k < M+1 ↔ M+1 ≤ k
-      have : M + 1 ≤ k := by
-        simpa [Finset.mem_range, not_lt] using hkNot
-      exact Nat.lt_of_lt_of_le (Nat.lt_succ_self M) this
+      simp_all only [tsub_le_iff_right, range_subset_range, add_le_add_iff_right, mem_range, not_lt, M]
+      exact hkNot--exact Nat.succ_le.mp <| not_lt.mp hkNot
     -- Apply the vanishing lemma at level k.
     exact totalPathWeightLen_vanish_of_too_long
       (U:=U) (R:=R) L P s c k hMk
   -- Now `sum_subset` folds away the vanishing tail (orient result with `.symm` to match goal).
   refine (Finset.sum_subset hsubset (fun k hkN hkNot => by simp [hvanish hkN hkNot])).symm
 
+/- ### (Skeleton) Prefunctor Invariance
+
+Future theorem: evaluation invariant under quiver isomorphisms (weight preserving
+bijections). This will leverage `Prefunctor.ext` and transport of sums over
+predecessors. -/
+-- structure WeightIso {U V} [Quiver U] [Quiver V] (R) :=
+-- (F : U ⥤q V) (Finv : V ⥤q U)
+-- (left  : Finv.comp F = 𝟭q _) (right : F.comp Finv = 𝟭q _)
+-- (wU : ∀ {a b} (e : a ⟶ b), ?wV (F.map e) = ?wU e)
+
+-- TODO: lemma forwardEval_congr_weightIso ...
+
 end PathExpansion
-end NeuralNetwork.QuiverExt
-end MCNN
